@@ -1,0 +1,367 @@
+import { describe, expect, it } from 'vitest';
+import {
+  computeTotals,
+  formatLocalNumber,
+  InvoiceInputError,
+  tauxBp,
+  type InvoiceLine,
+} from './totals.js';
+import {
+  buildDgiSignPayload,
+  parseCertification,
+  stickerAlert,
+  type InvoiceDraft,
+} from './dgi-payload.js';
+
+const ligne = (over: Partial<InvoiceLine> = {}): InvoiceLine => ({
+  description: 'Baguette',
+  unitPriceMinor: 500,
+  quantity: 2,
+  taxes: 'TVA',
+  ...over,
+});
+
+const brouillon = (over: Partial<InvoiceDraft> = {}): InvoiceDraft => ({
+  template: 'B2C',
+  paymentMethod: 'cash',
+  pointOfSale: 'Boutique Marcory',
+  establishment: 'Siege',
+  client: { companyName: 'Client comptant' },
+  lines: [ligne()],
+  ...over,
+});
+
+describe('Les totaux — l argent se compte en entiers', () => {
+  it('calcule HT, TVA et TTC au taux normal', () => {
+    const t = computeTotals([ligne()]);
+    expect(t.totalHtMinor).toBe(1_000);
+    expect(t.totalTvaMinor).toBe(180);
+    expect(t.totalTtcMinor).toBe(1_180);
+  });
+
+  it('applique le taux reduit et les exonerations', () => {
+    expect(computeTotals([ligne({ taxes: 'TVAB' })]).totalTvaMinor).toBe(90);
+    expect(computeTotals([ligne({ taxes: 'TVAC' })]).totalTvaMinor).toBe(0);
+    expect(computeTotals([ligne({ taxes: 'TVAD' })]).totalTvaMinor).toBe(0);
+  });
+
+  it('arrondit la TVA ligne par ligne, pas sur le total', () => {
+    // 333 x 1 a 18 % = 59,94 -> 60 par ligne. Trois lignes : 180.
+    // Sur le total on aurait 999 x 18 % = 179,82 -> 180 aussi, mais la
+    // difference se voit des que les taux different ; ce test fige la regle.
+    const t = computeTotals([
+      ligne({ unitPriceMinor: 333, quantity: 1 }),
+      ligne({ unitPriceMinor: 333, quantity: 1 }),
+      ligne({ unitPriceMinor: 333, quantity: 1 }),
+    ]);
+    expect(t.lines.map((l) => l.tvaMinor)).toEqual([60, 60, 60]);
+    expect(t.totalTvaMinor).toBe(180);
+  });
+
+  it('applique la remise de ligne puis la remise globale, jamais leur somme', () => {
+    // 1000 HT, -10 % ligne = 900, -10 % global = 810. Pas 800.
+    const t = computeTotals([ligne({ discountPercent: 10 })], { discountPercent: 10 });
+    expect(t.totalHtMinor).toBe(810);
+  });
+
+  it('ajoute les taxes specifiques au TTC sans les passer par la TVA', () => {
+    const t = computeTotals([ligne({ customTaxes: [{ name: 'AIRSI', amountMinor: 50 }] })]);
+    expect(t.totalTvaMinor).toBe(180);
+    expect(t.totalCustomMinor).toBe(50);
+    expect(t.totalTtcMinor).toBe(1_230);
+  });
+
+  it('refuse un montant hors des bornes ou JavaScript compte encore juste', () => {
+    // Au-dela de 2^53 les entiers derivent en silence. Un total faux transmis
+    // a la DGI se corrige par un avoir, et un sticker de plus.
+    expect(() =>
+      computeTotals([ligne({ unitPriceMinor: Number.MAX_SAFE_INTEGER, quantity: 1000 })]),
+    ).toThrow(InvoiceInputError);
+  });
+
+  it('refuse une facture vide, une quantite nulle ou un prix negatif', () => {
+    expect(() => computeTotals([])).toThrow(InvoiceInputError);
+    expect(() => computeTotals([ligne({ quantity: 0 })])).toThrow(InvoiceInputError);
+    expect(() => computeTotals([ligne({ unitPriceMinor: -1 })])).toThrow(InvoiceInputError);
+    expect(() => computeTotals([ligne({ discountPercent: 120 })])).toThrow(InvoiceInputError);
+  });
+});
+
+describe('La numerotation locale', () => {
+  it('produit une serie lisible ou un trou se voit', () => {
+    expect(formatLocalNumber(2026, 1)).toBe('2026-000001');
+    expect(formatLocalNumber(2026, 999_999)).toBe('2026-999999');
+  });
+
+  it('refuse une sequence hors bornes', () => {
+    expect(() => formatLocalNumber(2026, 0)).toThrow(InvoiceInputError);
+    expect(() => formatLocalNumber(2026, 1_000_000)).toThrow(InvoiceInputError);
+  });
+});
+
+describe('Le corps DGI — ce qui ne partira pas pour rien', () => {
+  it('construit un corps conforme pour une vente comptant', () => {
+    const { payload, totals } = buildDgiSignPayload(brouillon());
+    expect(payload.invoiceType).toBe('sale');
+    expect(payload.paymentMethod).toBe('cash');
+    expect(payload.items[0]).toMatchObject({ amount: 500, quantity: 2, taxes: ['TVA'] });
+    expect(totals.totalTtcMinor).toBe(1_180);
+  });
+
+  it('accepte le virement et le mobile money, comme le modele DGI', () => {
+    expect(buildDgiSignPayload(brouillon({ paymentMethod: 'transfer' })).payload.paymentMethod)
+      .toBe('transfer');
+    expect(buildDgiSignPayload(brouillon({ paymentMethod: 'mobile-money' })).payload.paymentMethod)
+      .toBe('mobile-money');
+  });
+
+  it('refuse une B2B sans NCC client, que la DGI rejetterait', () => {
+    expect(() =>
+      buildDgiSignPayload(brouillon({ template: 'B2B', client: { companyName: 'SARL X' } })),
+    ).toThrow(InvoiceInputError);
+  });
+
+  it('accepte une B2B avec NCC', () => {
+    const { payload } = buildDgiSignPayload(
+      brouillon({ template: 'B2B', client: { ncc: '9606123E', companyName: 'SARL X' } }),
+    );
+    expect(payload.clientNcc).toBe('9606123E');
+  });
+
+  it('exige devise et taux en B2F, et refuse une devise inconnue', () => {
+    expect(() => buildDgiSignPayload(brouillon({ template: 'B2F' }))).toThrow(InvoiceInputError);
+    expect(() =>
+      buildDgiSignPayload(brouillon({ template: 'B2F', foreignCurrency: 'XXX', foreignCurrencyRate: 1 })),
+    ).toThrow(InvoiceInputError);
+    const ok = buildDgiSignPayload(
+      brouillon({ template: 'B2F', foreignCurrency: 'eur', foreignCurrencyRate: 655.957 }),
+    );
+    expect(ok.payload.foreignCurrency).toBe('EUR');
+  });
+
+  it('refuse un point de vente absent, l erreur que la DGI renvoie en 400', () => {
+    expect(() => buildDgiSignPayload(brouillon({ pointOfSale: '  ' }))).toThrow(InvoiceInputError);
+  });
+
+  it('refuse un lien vers un recu sans numero de recu', () => {
+    expect(() => buildDgiSignPayload(brouillon({ isRne: true }))).toThrow(InvoiceInputError);
+  });
+});
+
+describe('La reponse de certification', () => {
+  it('lit la reference, le token et le stock de stickers', () => {
+    const c = parseCertification({
+      ncc: '9606123E',
+      reference: '9606123E25000000019',
+      token: 'http://fne/verification/019465c1',
+      balance_sticker: 179,
+      warning: false,
+    });
+    expect(c.reference).toBe('9606123E25000000019');
+    expect(c.stickerBalance).toBe(179);
+    expect(c.warning).toBe(false);
+  });
+
+  it('refuse une reponse sans reference ou sans token : rien n est prouve', () => {
+    expect(() => parseCertification({ token: 'http://x' })).toThrow(InvoiceInputError);
+    expect(() => parseCertification({ reference: 'X' })).toThrow(InvoiceInputError);
+    expect(() => parseCertification(null)).toThrow(InvoiceInputError);
+  });
+
+  it('alerte sur le stock de stickers avant la rupture', () => {
+    expect(stickerAlert(500)).toBe('ok');
+    expect(stickerAlert(80)).toBe('low');
+    expect(stickerAlert(12)).toBe('critical');
+    expect(stickerAlert(undefined)).toBe('unknown');
+  });
+});
+
+/* ── Le cas chiffre officiel ───────────────────────────────────────────────
+   Repris du recapitulatif de la plateforme FNE, guide d'utilisation p. 33, et
+   revu a l'ecran sur un compte reel le 29 aout 2026. Ce n'est pas un exemple
+   invente : c'est la reponse que la DGI affiche, et notre moteur doit tomber
+   dessus au franc pres.
+
+     Article : PU HT 1 450 000, quantite 1, remise 5 %
+     Total HT             1 450 000
+     Remise                  72 500
+     Total HT apres remise 1 377 500
+     Total TVA               247 950   (18 % du HT APRES remise)
+     Total TTC             1 625 450
+*/
+describe('le cas chiffre officiel de la DGI', () => {
+  const ligne: InvoiceLine = {
+    description: 'PC Core i7-12450H- RAM 32Go- 512Go SSD',
+    reference: '236589021',
+    unitPriceMinor: 1_450_000,
+    quantity: 1,
+    discountPercent: 5,
+    taxes: 'TVA',
+  };
+
+  it('reproduit les cinq lignes du recapitulatif, au franc pres', () => {
+    const t = computeTotals([ligne]);
+    expect(t.grossHtMinor).toBe(1_450_000);
+    expect(t.discountMinor).toBe(72_500);
+    expect(t.totalHtMinor).toBe(1_377_500);
+    expect(t.totalTvaMinor).toBe(247_950);
+    expect(t.totalTtcMinor).toBe(1_625_450);
+  });
+
+  it('la TVA porte sur le HT APRES remise, jamais sur le brut', () => {
+    const t = computeTotals([ligne]);
+    // Preuve negative : sur le brut, la TVA vaudrait 261 000. Si ce test
+    // tombe sur 261 000, l'ordre de calcul a ete inverse quelque part.
+    expect(t.totalTvaMinor).not.toBe(261_000);
+    expect(t.totalTvaMinor).toBe(Math.round((t.totalHtMinor * 1800) / 10_000));
+  });
+
+  it('brut moins remise egale net, toujours', () => {
+    const cas: InvoiceLine[][] = [
+      [ligne],
+      [{ ...ligne, quantity: 3, discountPercent: 7 }],
+      [ligne, { ...ligne, unitPriceMinor: 999, discountPercent: 33 }],
+    ];
+    for (const lignes of cas) {
+      const t = computeTotals(lignes, { discountPercent: 11 });
+      expect(t.grossHtMinor - t.discountMinor).toBe(t.totalHtMinor);
+    }
+  });
+});
+
+/* ── Le chemin du non-assujetti ────────────────────────────────────────────
+   C'est la cible de la V1 : regime de l'entreprenant et microentreprises, qui
+   n'ont PAS le droit de facturer la TVA. Le code retenu est TVAD, nomme par la
+   plateforme « TVA exo.leg - Pas de TVA sur HT 00,00 % - D (TEE, TCE,
+   Microentreprise) ». Voir docs/pivot/12_ASSUJETTISSEMENT_TVA_ET_FNE.md.
+*/
+describe('le chemin du non-assujetti — TVAD', () => {
+  const ligne: InvoiceLine = {
+    description: 'Prestation de service',
+    unitPriceMinor: 75_000,
+    quantity: 2,
+    taxes: 'TVAD',
+  };
+
+  it('ne pose aucune TVA, et le TTC egale le HT', () => {
+    const t = computeTotals([ligne]);
+    expect(t.totalHtMinor).toBe(150_000);
+    expect(t.totalTvaMinor).toBe(0);
+    expect(t.totalTtcMinor).toBe(150_000);
+  });
+
+  it('la remise fonctionne quand meme, sans faire apparaitre de TVA', () => {
+    const t = computeTotals([{ ...ligne, discountPercent: 10 }]);
+    expect(t.grossHtMinor).toBe(150_000);
+    expect(t.discountMinor).toBe(15_000);
+    expect(t.totalHtMinor).toBe(135_000);
+    expect(t.totalTvaMinor).toBe(0);
+  });
+
+  it('les quatre taux, en points de base, tels que la DGI les reconnait', () => {
+    expect(tauxBp('TVA')).toBe(1800); // 18 % — le taux normal
+    expect(tauxBp('TVAB')).toBe(900); // 9 %  — le taux reduit
+    expect(tauxBp('TVAC')).toBe(0); // exoneration conventionnelle
+    expect(tauxBp('TVAD')).toBe(0); // exoneration legale
+  });
+
+  it('les deux exonerations sont a zero, les deux taux ne le sont pas', () => {
+    const zero = (code: InvoiceLine['taxes']) =>
+      computeTotals([{ ...ligne, taxes: code }]).totalTvaMinor === 0;
+    expect(zero('TVAD')).toBe(true); // exoneration legale
+    expect(zero('TVAC')).toBe(true); // exoneration conventionnelle
+    expect(zero('TVA')).toBe(false); // 18 %
+    expect(zero('TVAB')).toBe(false); // 9 %
+  });
+
+  it('une facture mixte separe bien les bases par taux', () => {
+    const t = computeTotals([
+      ligne,
+      { description: 'Materiel', unitPriceMinor: 100_000, quantity: 1, taxes: 'TVA' },
+    ]);
+    expect(t.totalHtMinor).toBe(250_000);
+    // Seule la seconde ligne porte de la TVA.
+    expect(t.lines[0]!.tvaMinor).toBe(0);
+    expect(t.lines[1]!.tvaMinor).toBe(18_000);
+    expect(t.totalTvaMinor).toBe(18_000);
+  });
+});
+
+/**
+ * La quantite fractionnaire — le trou trouve en revue du 31 aout 2026.
+ *
+ * `quantity` n'est pas contraint entier, et c'est voulu : 2,5 kg de riz est
+ * une vente ordinaire. Mais `grossHtMinor` sortait alors NON ARRONDI, et le
+ * module promet en tete de fichier que tout est en entiers XOF. Trois valeurs
+ * mesurees avant correction, qui sont les trois cas ci-dessous :
+ *
+ *     0,5 x 999 F     ->  grossHtMinor  = 499.5
+ *                         discountMinor = -0.5   (remise NEGATIVE)
+ *     100 x 0,01      ->  grossHtMinor  = 1.0000000000000007
+ *
+ * Ces tests echouent sur le code d'avant. C'est leur seul interet.
+ */
+describe('la quantite fractionnaire ne fait pas fuir de flottant', () => {
+  const entier = (n: number) => Number.isInteger(n);
+
+  it('0,5 x 999 F : tous les totaux restent entiers', () => {
+    const t = computeTotals([ligne({ unitPriceMinor: 999, quantity: 0.5 })]);
+    expect(entier(t.grossHtMinor)).toBe(true);
+    expect(entier(t.discountMinor)).toBe(true);
+    expect(entier(t.totalHtMinor)).toBe(true);
+    expect(entier(t.totalTvaMinor)).toBe(true);
+    expect(entier(t.totalTtcMinor)).toBe(true);
+    expect(entier(t.lines[0]!.grossHtMinor)).toBe(true);
+    // 999 x 0,5 = 499,5 -> 500 (au plus proche, la moitie vers le haut).
+    expect(t.grossHtMinor).toBe(500);
+    expect(t.totalHtMinor).toBe(500);
+  });
+
+  it('une remise ne peut jamais etre negative', () => {
+    // Le cas qui donnait -0,5. Et une balayeuse sur des quantites hostiles.
+    for (const quantity of [0.5, 0.01, 0.1, 1 / 3, 2.5, 0.007, 99.999]) {
+      for (const unitPriceMinor of [1, 999, 1000, 12_345]) {
+        const t = computeTotals([ligne({ unitPriceMinor, quantity })]);
+        expect(t.discountMinor).toBeGreaterThanOrEqual(0);
+        expect(entier(t.discountMinor)).toBe(true);
+      }
+    }
+  });
+
+  it('100 lignes de 0,01 n accumulent aucune derive', () => {
+    const lignes = Array.from({ length: 100 }, () =>
+      ligne({ unitPriceMinor: 1, quantity: 0.01 }),
+    );
+    const t = computeTotals(lignes);
+    expect(entier(t.grossHtMinor)).toBe(true);
+    // Chaque ligne vaut 0,01 -> arrondie a 0. Cent zeros font zero, et non
+    // 1.0000000000000007 comme la somme des flottants le donnait.
+    expect(t.grossHtMinor).toBe(0);
+    expect(t.discountMinor).toBe(0);
+  });
+
+  it('l identite brut - remise = net tient sur des quantites fractionnaires', () => {
+    for (const quantity of [0.5, 1.5, 2.5, 0.33, 7.77]) {
+      for (const discountPercent of [0, 7, 33, 100]) {
+        const t = computeTotals([ligne({ unitPriceMinor: 1_499, quantity })], {
+          discountPercent,
+        });
+        expect(t.grossHtMinor - t.discountMinor).toBe(t.totalHtMinor);
+        expect(t.totalTtcMinor).toBe(
+          t.totalHtMinor + t.totalTvaMinor + t.totalCustomMinor,
+        );
+      }
+    }
+  });
+
+  it('les quantites entieres ne bougent pas d un franc', () => {
+    // Le correctif ne doit RIEN changer au cas courant : arrondir un entier
+    // le laisse en place. Cette assertion est la pour le prouver.
+    const t = computeTotals([ligne({ unitPriceMinor: 1_000, quantity: 3 })]);
+    expect(t.grossHtMinor).toBe(3_000);
+    expect(t.totalHtMinor).toBe(3_000);
+    expect(t.totalTvaMinor).toBe(540);
+    expect(t.totalTtcMinor).toBe(3_540);
+    expect(t.discountMinor).toBe(0);
+  });
+});

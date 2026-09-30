@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const repoRoot = path.resolve(__dirname, '..');
 
 const ignoredSegments = new Set([
+  '__pycache__',
   '.apk-research',
   '.external-skills',
   '.git',
@@ -29,12 +30,17 @@ const ignoredExtensions = new Set([
   '.jpeg',
   '.keystore',
   '.lock',
+  '.mp3',
+  '.mp4',
+  '.mov',
   '.pdf',
   '.png',
   '.ttf',
   '.otf',
   '.woff',
   '.woff2',
+  '.wav',
+  '.webm',
   '.webp',
   '.xapk',
   '.zip'
@@ -75,7 +81,14 @@ describe('repository mojibake guardrail', () => {
       .map((filePath) => {
         const relative = path.normalize(path.relative(repoRoot, filePath));
         if (allowedMojibakeFiles.has(relative)) return null;
-        const content = readFileSync(filePath, 'utf8');
+        /* Un binaire lu en UTF-8 rend des octets de remplacement qui
+           ressemblent a du mojibake sans en etre : sept .pyc et deux videos
+           remontaient ainsi. La liste d'extensions ci-dessus vieillit mal, on
+           tranche donc sur le contenu — un octet nul n'apparait jamais dans du
+           texte, et c'est le marqueur le plus sur d'un binaire. */
+        const raw = readFileSync(filePath);
+        if (raw.includes(0)) return null;
+        const content = raw.toString('utf8');
         return mojibakePattern.test(content) ? relative : null;
       })
       .filter((entry): entry is string => Boolean(entry));

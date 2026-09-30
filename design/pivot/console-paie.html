@@ -1,0 +1,622 @@
+<title>Console de paie SwimPay</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Archivo:wdth,wght@62..125,500..900&display=swap">
+<style>
+/* ------------------------------------------------------------------
+   La console de paie — le poste du COMPTABLE, sur ordinateur.
+   Decisions de LO (28/09/2026) :
+     - chaque salarie est paye en 1 clic sur SON compte SwimPay, puis
+       retire ou il veut ;
+     - l'argent d'un salarie pas encore inscrit est reserve 24 h au plus ;
+     - les entreprises d'ici travaillent sur Odoo : le comptable importe
+       un CSV, le traite, agit. On fait plus simple : Odoo connecte une
+       fois, les bulletins arrivent seuls et reviennent « payes ».
+   Meme identite que l'app : #141414 #434343 #FFFFFF #A2FF01, hero acide
+   en degrade, titres Archivo condense, texte Outfit. Mono-theme sombre.
+   ------------------------------------------------------------------ */
+:root {
+  color-scheme: dark;
+  --fond: #141414; --planche: #0E0E0E; --surface: #1C1C1C; --surface-2: #242424;
+  --trait: #2E2E2E; --gris: #434343; --encre: #FFFFFF; --sourd: #909090;
+  --acide: #A2FF01; --encre-acide: #141414; --erreur: #E5484D; --attention: #F5B546;
+  --grad-hero: linear-gradient(158deg, #6FBF00 0%, #8FE500 16%, #A2FF01 42%, #BFFF2E 68%, #E2FF8C 92%, #F2FFC4 100%);
+  --voile-hero: radial-gradient(118% 140% at 92% 0%, rgba(255,255,255,.32), transparent 60%), radial-gradient(80% 120% at 0% 100%, rgba(60,120,0,.30), transparent 58%);
+  --sortie: cubic-bezier(.23, 1, .32, 1);
+  --titre: "Archivo", "Outfit", ui-sans-serif, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--planche); }
+body { margin: 0; color: var(--encre); font-family: "Outfit", ui-sans-serif, system-ui, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--acide); outline-offset: 2px; }
+.titre { font-family: var(--titre); font-weight: 900; font-stretch: 72%; letter-spacing: -0.02em; line-height: .92; text-transform: uppercase; margin: 0; }
+
+/* ================= barre du haut ================= */
+.barre { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: rgba(14,14,14,.86); backdrop-filter: blur(14px); border-bottom: 1px solid var(--trait); }
+.barre-in { max-width: 1280px; margin: 0 auto; padding: 0 20px; height: 62px; display: flex; align-items: center; gap: 18px; }
+.marque { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+.marque img { width: 20px; }
+.marque span { color: var(--sourd); font-weight: 400; }
+.dossier { display: flex; align-items: center; gap: 10px; border: 1px solid var(--trait); border-radius: 999px; padding: 6px 14px 6px 6px; }
+.dossier b { width: 30px; height: 30px; border-radius: 99px; background: var(--surface-2); display: grid; place-items: center; font-size: 11px; }
+.dossier small { display: block; color: var(--sourd); font-size: 11.5px; line-height: 1.2; }
+.pousse { flex: 1; }
+.role { display: flex; gap: 4px; padding: 4px; border-radius: 999px; border: 1px solid var(--trait); }
+.role button { border: 0; background: none; border-radius: 999px; padding: 7px 14px; cursor: pointer; color: var(--sourd); font-size: 13px; }
+.role button[aria-pressed="true"] { background: var(--encre); color: var(--fond); font-weight: 600; }
+.role-lib { color: var(--sourd); font-size: 12px; }
+
+/* ================= page ================= */
+.page { max-width: 1280px; margin: 0 auto; padding: 22px 20px 64px; display: grid; gap: 18px; }
+.hero {
+  position: relative; border-radius: 30px; overflow: hidden; background: var(--grad-hero); color: var(--encre-acide);
+  padding: 26px 28px; display: grid; grid-template-columns: 1.1fr 2fr; gap: 24px; align-items: end;
+}
+.hero::after { content: ""; position: absolute; inset: 0; background: var(--voile-hero); pointer-events: none; }
+.hero::before { content: ""; position: absolute; inset: 0; background: url("grain.png") repeat; background-size: 112px; opacity: .22; mix-blend-mode: multiply; pointer-events: none; }
+.hero > * { position: relative; z-index: 1; }
+.hero .sur { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(20,20,20,.66); }
+.hero .titre { font-size: clamp(40px, 5vw, 64px); margin-top: 6px; }
+.chiffres { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.chiffre { border-radius: 20px; padding: 14px 16px; background: rgba(255,255,255,.36); border: 1px solid rgba(255,255,255,.55); backdrop-filter: blur(14px); }
+.chiffre span { display: block; font-size: 12px; color: rgba(20,20,20,.7); }
+.chiffre b { display: block; font-family: var(--titre); font-weight: 900; font-stretch: 72%; font-size: 30px; line-height: 1.05; letter-spacing: -0.01em; }
+.chiffre small { font-size: 12px; color: rgba(20,20,20,.7); }
+
+/* etapes */
+.etapes { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.etapes button { flex: 1; min-width: 150px; display: flex; align-items: center; gap: 10px; text-align: left; border: 1px solid var(--trait); background: var(--fond); border-radius: 18px; padding: 10px 14px; cursor: pointer; color: var(--sourd); transition: border-color 160ms, background 160ms; }
+.etapes button:hover { color: var(--encre); }
+.etapes .num { width: 26px; height: 26px; border-radius: 99px; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 700; border: 1px solid var(--trait); }
+.etapes .fait .num { background: var(--gris); border-color: var(--gris); color: var(--encre); }
+.etapes .ici { border-color: var(--encre); background: var(--surface); color: var(--encre); }
+.etapes .ici .num { background: var(--encre); border-color: var(--encre); color: var(--fond); }
+.etapes small { display: block; font-size: 11.5px; line-height: 1.25; }
+
+.panneau { border: 1px solid var(--trait); background: var(--fond); border-radius: 28px; padding: 24px; display: grid; gap: 18px; }
+.panneau h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+.panneau .intro { margin: -8px 0 0; color: var(--sourd); max-width: 76ch; }
+.panneau .intro b { color: var(--encre); font-weight: 500; }
+
+.bouton { height: 48px; padding: 0 22px; border-radius: 999px; border: 0; cursor: pointer; font-weight: 600; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: transform 140ms var(--sortie), opacity 160ms; }
+.bouton:active { transform: scale(.97); }
+.bouton.blanc { background: var(--encre); color: var(--fond); }
+.bouton.contour { background: none; border: 1px solid var(--gris); color: var(--encre); }
+.bouton.petit { height: 36px; padding: 0 14px; font-size: 13px; }
+.bouton:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+.rangee { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.aide { color: var(--sourd); font-size: 13px; margin: 0; }
+.aide b { color: var(--encre); font-weight: 500; }
+.maquette { border: 1px dashed var(--gris); border-radius: 999px; padding: 6px 12px; font-size: 12px; color: var(--sourd); }
+
+/* etape 1 : la source */
+.sources { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; }
+.source { border: 1px solid var(--trait); border-radius: 24px; padding: 20px; background: var(--surface); display: grid; gap: 14px; align-content: start; }
+.source.reco { border-color: var(--encre); }
+.source .tete { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.source h3 { margin: 0; font-size: 18px; font-weight: 600; }
+.source .etiquette { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; background: var(--encre); color: var(--fond); border-radius: 999px; padding: 4px 10px; }
+.source ul { margin: 0; padding-left: 18px; color: var(--sourd); display: grid; gap: 4px; }
+.source ul b { color: var(--encre); font-weight: 500; }
+.champs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.champ { display: grid; gap: 5px; }
+.champ label { font-size: 12px; color: var(--sourd); }
+.saisie { height: 44px; border-radius: 14px; border: 1px solid var(--trait); background: var(--fond); padding: 0 14px; outline: 0; width: 100%; }
+.saisie:focus { border-color: var(--sourd); }
+.depot { position: relative; border: 1.5px dashed var(--gris); border-radius: 20px; padding: 22px; text-align: center; color: var(--sourd); cursor: pointer; }
+.depot b { color: var(--encre); display: block; font-size: 15px; }
+.depot input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.colonnes { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.colonne { border: 1px solid var(--trait); border-radius: 14px; padding: 9px 12px; font-size: 13px; display: flex; justify-content: space-between; gap: 8px; }
+.colonne span { color: var(--sourd); }
+.colonne b { font-weight: 600; }
+.colonne.ok b::before { content: "✓ "; color: var(--acide); }
+.colonne.manque { border-color: var(--erreur); }
+.colonne.manque b { color: var(--erreur); }
+.message { border-radius: 16px; padding: 12px 14px; border: 1px solid var(--trait); background: var(--surface); font-size: 13px; }
+.message.ok { border-color: rgba(162,255,1,.4); }
+.message.ko { border-color: var(--erreur); color: var(--encre); }
+
+/* etape 2 : le controle */
+.filtres { display: flex; flex-wrap: wrap; gap: 8px; }
+.filtre { border: 1px solid var(--trait); background: none; border-radius: 999px; padding: 8px 14px; cursor: pointer; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+.filtre b { font-weight: 700; }
+.filtre[aria-pressed="true"] { background: var(--encre); color: var(--fond); border-color: var(--encre); }
+.table-boite { border: 1px solid var(--trait); border-radius: 20px; overflow: auto; max-height: 520px; }
+table { width: 100%; border-collapse: collapse; min-width: 900px; }
+th { position: sticky; top: 0; background: var(--surface); text-align: left; font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--sourd); padding: 11px 14px; border-bottom: 1px solid var(--trait); z-index: 1; }
+td { padding: 10px 14px; border-bottom: 1px solid var(--trait); vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; }
+td .sous { display: block; color: var(--sourd); font-size: 12px; }
+.pastille { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 3px 10px; border: 1px solid var(--trait); white-space: nowrap; }
+.pastille::before { content: ""; width: 7px; height: 7px; border-radius: 99px; background: currentColor; }
+.pastille.pret { color: var(--acide); border-color: rgba(162,255,1,.35); }
+.pastille.invite { color: var(--sourd); }
+.pastille.verifier { color: var(--erreur); border-color: rgba(229,72,77,.45); }
+.pastille.ecart { color: var(--attention); border-color: rgba(245,181,70,.45); }
+.pastille.nouveau { color: var(--encre); }
+.ecart-val { font-size: 12px; font-weight: 600; }
+.ecart-val.haut { color: var(--attention); }
+.act { border: 1px solid var(--gris); background: none; border-radius: 999px; padding: 5px 12px; cursor: pointer; font-size: 12.5px; white-space: nowrap; }
+.act.plein { background: var(--encre); color: var(--fond); border-color: var(--encre); font-weight: 600; }
+.plus-lignes { padding: 12px; text-align: center; }
+
+/* etape 3 : la boite en temps reel */
+.boite { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start; }
+.anneau { position: relative; width: 240px; height: 240px; margin: 0 auto; }
+.anneau svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.anneau .centre { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+.anneau .centre b { font-family: var(--titre); font-weight: 900; font-stretch: 72%; font-size: 64px; line-height: 1; display: block; }
+.anneau .centre span { color: var(--sourd); font-size: 13px; }
+.compteurs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.compteur { border: 1px solid var(--trait); border-radius: 20px; padding: 14px 16px; background: var(--surface); }
+.compteur b { display: block; font-family: var(--titre); font-weight: 900; font-stretch: 72%; font-size: 36px; line-height: 1.05; }
+.compteur span { color: var(--sourd); font-size: 12.5px; }
+.compteur.pret b { color: var(--acide); }
+.compteur.verifier b { color: var(--erreur); }
+.fil { border: 1px solid var(--trait); border-radius: 20px; overflow: hidden; }
+.fil h3 { margin: 0; padding: 12px 16px; font-size: 13px; font-weight: 600; color: var(--sourd); border-bottom: 1px solid var(--trait); display: flex; justify-content: space-between; }
+.fil h3 .vif { display: inline-flex; gap: 6px; align-items: center; color: var(--acide); }
+.fil h3 .vif::before { content: ""; width: 8px; height: 8px; border-radius: 99px; background: var(--acide); animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+.fil ol { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow: auto; }
+.fil li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--trait); animation: entre 420ms var(--sortie); }
+.fil li span { color: var(--sourd); font-size: 12.5px; }
+@keyframes entre { from { opacity: 0; transform: translateY(-6px); } }
+
+/* etape 4 et 5 */
+.recap { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.bloc { border: 1px solid var(--trait); border-radius: 22px; padding: 18px; background: var(--surface); display: grid; gap: 4px; }
+.bloc span { color: var(--sourd); font-size: 12.5px; }
+.bloc b { font-family: var(--titre); font-weight: 900; font-stretch: 72%; font-size: 34px; line-height: 1.05; }
+.bloc small { color: var(--sourd); font-size: 12.5px; }
+.bloc.total { border-color: var(--encre); }
+.validation { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; border: 1px solid var(--trait); border-radius: 22px; padding: 18px 20px; }
+.validation .qui { display: flex; gap: 12px; align-items: center; }
+.validation .qui b { width: 38px; height: 38px; border-radius: 99px; display: grid; place-items: center; background: var(--surface-2); font-size: 12px; flex: none; }
+.validation.ok { border-color: rgba(162,255,1,.4); }
+.code { display: flex; gap: 8px; }
+.code input { width: 46px; height: 52px; border-radius: 14px; border: 1px solid var(--trait); background: var(--fond); text-align: center; font-size: 22px; outline: 0; }
+.code input:focus { border-color: var(--encre); }
+.barre-prog { height: 10px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.barre-prog i { display: block; height: 100%; width: 0; background: var(--acide); transition: width 200ms linear; }
+.reserve { border: 1px solid rgba(245,181,70,.45); border-radius: 22px; padding: 16px 18px; display: grid; gap: 6px; }
+.reserve b { color: var(--attention); }
+.odoo-retour { border: 1px solid rgba(162,255,1,.4); border-radius: 22px; padding: 16px 18px; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition-duration: 0ms !important; } }
+@media (max-width: 980px) {
+  .hero { grid-template-columns: 1fr; }
+  .sources, .boite { grid-template-columns: 1fr; }
+  .compteurs { grid-template-columns: 1fr 1fr 1fr; }
+}
+@media (max-width: 620px) {
+  .chiffres { grid-template-columns: 1fr 1fr; }
+  .champs, .compteurs { grid-template-columns: 1fr; }
+  .dossier small, .role-lib { display: none; }
+  .validation { grid-template-columns: 1fr; }
+}
+</style>
+
+<header class="barre"><div class="barre-in">
+  <div class="marque"><img src="logo-blanc.png" alt="">SwimPay <span>Console</span></div>
+  <div class="dossier"><b>GA</b><div>Groupe Awa Distribution<small>Dossier suivi par le cabinet · 1 000 salariés</small></div></div>
+  <div class="pousse"></div>
+  <span class="role-lib">Vous êtes</span>
+  <div class="role" role="group" aria-label="Rôle"><button id="r-compta" aria-pressed="true">Comptable</button><button id="r-dir" aria-pressed="false">Dirigeant</button></div>
+</div></header>
+
+<main class="page">
+  <section class="hero" aria-label="Résumé de la paie">
+    <div><span class="sur">Paie du mois</span><h1 class="titre">Septembre<br>2026</h1></div>
+    <div class="chiffres" id="chiffres"></div>
+  </section>
+  <nav class="etapes" id="etapes" aria-label="Étapes de la paie"></nav>
+  <section class="panneau" id="panneau"></section>
+</main>
+
+<script>
+/* ============================ outils ============================ */
+const NB = " ";
+const F = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, NB) + NB + "F";
+const M = (n) => (n / 1e6).toFixed(n >= 1e8 ? 0 : 1).replace(".", ",") + NB + "M";
+const echappe = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+/* hasard deterministe : la meme maquette a chaque ouverture */
+let graine = 20260928;
+const alea = () => { graine = (graine * 1103515245 + 12345) & 0x7fffffff; return graine / 0x7fffffff; };
+const choix = (t) => t[Math.floor(alea() * t.length)];
+
+/* La paie : 0,5 % dans GRILLE_DEFAUT (paie_salaires), facturee a l'employeur.
+   Le salarie recoit son net entier, sur son compte SwimPay. */
+const TAUX_PAIE_BP = 50;
+const RESERVE_HEURES = 24;
+
+/* ============================ 1 000 salaries de maquette ============================ */
+const PRENOMS = ["Aya", "Awa", "Mariam", "Fatou", "Adjoua", "Akissi", "Aminata", "Salimata", "Affoué", "Ahou", "Yao", "Koffi", "Kouamé", "Seydou", "Moussa", "Ibrahim", "Arsène", "Serge", "Didier", "Hervé", "Franck", "Sandrine", "Christelle", "Nadège", "Désiré", "Josiane", "Rokia", "Adama", "Lassina", "Bintou"];
+const NOMS = ["Kouassi", "Koné", "Traoré", "Yao", "Konan", "Kouadio", "Bamba", "Ouattara", "Coulibaly", "Diabaté", "N'Guessan", "Aka", "Brou", "Touré", "Diallo", "Soro", "Koffi", "Gnagne", "Assi", "Dosso", "Fofana", "Kamagaté", "Tanoh", "Ehui"];
+const GROUPES = [
+  { nom: "Caisse", base: [95000, 140000], part: .28 },
+  { nom: "Magasin", base: [85000, 125000], part: .30 },
+  { nom: "Livraison", base: [110000, 160000], part: .18 },
+  { nom: "Sécurité", base: [90000, 115000], part: .08 },
+  { nom: "Administration", base: [180000, 320000], part: .10 },
+  { nom: "Encadrement", base: [350000, 900000], part: .06 },
+];
+const PREFIXES = ["07", "05", "01"];
+function numero() { return choix(PREFIXES) + " " + Array.from({ length: 4 }, () => String(Math.floor(alea() * 100)).padStart(2, "0")).join(" "); }
+function groupeAuHasard() { let r = alea(), c = 0; for (const g of GROUPES) { c += g.part; if (r <= c) return g; } return GROUPES[0]; }
+
+function genererSalaries(n) {
+  graine = 20260928;
+  const liste = [];
+  for (let i = 0; i < n; i++) {
+    const g = groupeAuHasard();
+    const base = Math.round((g.base[0] + alea() * (g.base[1] - g.base[0])) / 500) * 500;
+    const nom = choix(PRENOMS) + " " + choix(NOMS);
+    const s = { mat: "GA-" + String(1001 + i), nom, groupe: g.nom, tel: numero(), net: base, avant: base, etat: "pret", probleme: null, ok: false };
+    const r = alea();
+    if (r < .112) s.etat = "invite";
+    else if (r < .153) {
+      s.etat = "verifier";
+      s.probleme = choix([
+        { code: "nom", txt: "Nom différent dans l'annuaire", det: "Le numéro appartient à " + choix(PRENOMS) + " " + choix(NOMS) },
+        { code: "prouve", txt: "Numéro prouvé différent", det: "Le salarié a prouvé le " + numero() },
+        { code: "prefixe", txt: "Numéro invalide", det: "9 chiffres au lieu de 10" },
+      ]);
+      /* le numero affiche doit montrer le defaut qu'on lui reproche */
+      if (s.probleme.code === "prefixe") s.tel = s.tel.slice(0, -1);
+    }
+    const v = alea();
+    if (v < .004) s.net = Math.round(base * (1.22 + alea() * .2) / 500) * 500;           /* ecart fort */
+    else if (v < .12) s.net = base + choix([5000, 10000, 15000, -5000, 20000]);          /* primes, retenues */
+    if (alea() < .005) { s.avant = 0; s.nouveau = true; }                                 /* embauche du mois */
+    liste.push(s);
+  }
+  /* un doublon, pour montrer qu'on le voit */
+  liste[417].tel = liste[88].tel; liste[417].etat = "verifier"; liste[417].probleme = { code: "doublon", txt: "Numéro en double", det: "Même numéro que " + liste[88].nom + " (" + liste[88].mat + ")" };
+  return liste;
+}
+/* au-dela de 20 % ARRONDI : l'etiquette affichee et le filtre disent la meme chose */
+const ecartFort = (s) => !s.nouveau && s.avant && Math.round(Math.abs(s.net - s.avant) / s.avant * 100) > 20;
+
+/* ============================ etat ============================ */
+const neuf = () => ({
+  etape: 1, source: null, odoo: { url: "https://groupe-awa.odoo.com", base: "groupe-awa", user: "compta@groupe-awa.ci", cle: "" },
+  fichier: null, salaries: [], filtre: "a-traiter", montrer: 60,
+  relances: 0, validation: { envoyee: false, validee: false }, paiement: { lance: false, faits: 0, fin: null }, role: "compta",
+});
+let E = neuf();
+let vif = null;
+
+/* ============================ calculs ============================ */
+function compte() {
+  const L = E.salaries;
+  const pret = L.filter((s) => s.etat === "pret").length;
+  const invite = L.filter((s) => s.etat === "invite").length;
+  const verifier = L.filter((s) => s.etat === "verifier" && !s.ok).length;
+  const ecarts = L.filter((s) => ecartFort(s) && !s.ok).length;
+  const nouveaux = L.filter((s) => s.nouveau).length;
+  const total = L.reduce((a, s) => a + s.net, 0);
+  const aPayer = L.filter((s) => s.etat === "pret").reduce((a, s) => a + s.net, 0);
+  const reserve = L.filter((s) => s.etat !== "pret").reduce((a, s) => a + s.net, 0);
+  const avant = L.reduce((a, s) => a + s.avant, 0);
+  return { n: L.length, pret, invite, verifier, ecarts, nouveaux, total, aPayer, reserve, avant, frais: Math.round(total * TAUX_PAIE_BP / 10000) };
+}
+
+/* ============================ rendu general ============================ */
+const ETAPES = [
+  ["Source", "Odoo ou un fichier"],
+  ["Contrôle", "Seulement les lignes à problème"],
+  ["Bénéficiaires", "Invitations et prêts en direct"],
+  ["Validation", "Le dirigeant valide"],
+  ["Paiement", "1 clic, puis retour dans Odoo"],
+];
+function rendre() {
+  const c = compte();
+  const vide = !E.salaries.length;
+  document.getElementById("chiffres").innerHTML =
+    "<div class='chiffre'><span>Net à payer</span><b>" + (vide ? "—" : M(c.total)) + "</b><small>" + (vide ? "en attente des bulletins" : F(c.total)) + "</small></div>" +
+    "<div class='chiffre'><span>Salariés</span><b>" + (vide ? "—" : c.n) + "</b><small>" + (vide ? "" : c.nouveaux + " embauches ce mois") + "</small></div>" +
+    "<div class='chiffre'><span>Prêts à recevoir</span><b>" + (vide ? "—" : Math.round(c.pret / c.n * 100) + NB + "%") + "</b><small>" + (vide ? "" : c.pret + " comptes SwimPay actifs") + "</small></div>" +
+    "<div class='chiffre'><span>Frais SwimPay · 0,5 %</span><b>" + (vide ? "—" : F(c.frais).replace(NB + "F", "")) + "</b><small>" + (vide ? "" : "F, payés par l'entreprise") + "</small></div>";
+  document.getElementById("etapes").innerHTML = ETAPES.map(([n, d], i) =>
+    "<button class='" + (i + 1 === E.etape ? "ici" : i + 1 < E.etape ? "fait" : "") + "' data-etape='" + (i + 1) + "' " + (vide && i > 0 ? "disabled" : "") + "><span class='num'>" + (i + 1 < E.etape ? "✓" : i + 1) + "</span><span>" + n + "<small>" + d + "</small></span></button>").join("");
+  document.querySelectorAll("[data-etape]").forEach((b) => b.addEventListener("click", () => aller(Number(b.dataset.etape))));
+  const p = document.getElementById("panneau");
+  p.innerHTML = PANNEAUX[E.etape](c);
+  brancher(p);
+}
+function aller(n) { E.etape = n; clearInterval(vif); vif = null; rendre(); if (n === 3) demarrerVif(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+
+/* ============================ les panneaux ============================ */
+const PANNEAUX = {
+  1() {
+    const o = E.odoo;
+    const fichier = E.fichier;
+    return "<h2>D'où viennent les bulletins ?</h2>" +
+      "<p class='intro'>Aujourd'hui, le comptable exporte un CSV d'Odoo, le retravaille, puis fait les virements un par un. Ici, <b>Odoo se connecte une seule fois</b> : chaque mois les bulletins validés arrivent seuls, et reviennent marqués payés.</p>" +
+      "<div class='sources'>" +
+        "<div class='source reco'>" +
+          "<div class='tete'><h3>Connecter Odoo</h3><span class='etiquette'>Recommandé</span></div>" +
+          "<ul><li><b>Les bulletins validés</b> du mois arrivent tout seuls, avec le net à payer.</li><li>Les fiches salariés donnent <b>nom, matricule et téléphone</b>.</li><li>Après le paiement, les bulletins sont <b>marqués payés dans Odoo</b> : rien à rapprocher.</li></ul>" +
+          "<div class='champs'>" +
+            "<div class='champ'><label for='o-url'>Adresse de votre Odoo</label><input class='saisie' id='o-url' value='" + echappe(o.url) + "'></div>" +
+            "<div class='champ'><label for='o-base'>Base de données</label><input class='saisie' id='o-base' value='" + echappe(o.base) + "'></div>" +
+            "<div class='champ'><label for='o-user'>Utilisateur</label><input class='saisie' id='o-user' value='" + echappe(o.user) + "'></div>" +
+            "<div class='champ'><label for='o-cle'>Clé API Odoo</label><input class='saisie' id='o-cle' type='password' placeholder='Préférences › Sécurité du compte › Nouvelle clé API' value='" + echappe(o.cle) + "'></div>" +
+          "</div>" +
+          "<div class='rangee'><button class='bouton blanc' data-odoo>Connecter et lire septembre</button><span class='maquette'>Maquette : toute clé est acceptée</span></div>" +
+        "</div>" +
+        "<div class='source'>" +
+          "<div class='tete'><h3>Importer un fichier</h3></div>" +
+          "<p class='aide' style='margin:0'>CSV ou export Odoo. Les colonnes sont <b>reconnues d'elles-mêmes</b> (« Employé », « Net à payer », « Téléphone portable »…) et le réglage est gardé pour le mois suivant.</p>" +
+          "<label class='depot'><b>Déposer le fichier de paie</b>ou cliquer pour le choisir<input type='file' accept='.csv,text/csv' data-fichier></label>" +
+          (fichier ? rapportFichier(fichier) : "") +
+          "<button class='bouton contour' data-exemple>Utiliser l'exemple de 1 000 salariés</button>" +
+        "</div>" +
+      "</div>";
+  },
+  2(c) {
+    const f = E.filtre;
+    const L = E.salaries.filter((s) =>
+      f === "tout" ? true :
+      f === "a-traiter" ? ((s.etat === "verifier" || ecartFort(s)) && !s.ok) :
+      f === "verifier" ? s.etat === "verifier" && !s.ok :
+      f === "ecarts" ? ecartFort(s) && !s.ok :
+      f === "nouveaux" ? s.nouveau :
+      f === "invite" ? s.etat === "invite" : s.etat === "pret");
+    const aTraiter = c.verifier + c.ecarts;
+    const lignes = L.slice(0, E.montrer).map(ligneSalarie).join("");
+    return "<h2>" + (aTraiter ? aTraiter + " lignes demandent votre attention" : "Tout est en ordre") + "</h2>" +
+      "<p class='intro'>SwimPay a contrôlé les " + c.n + " lignes : chaque numéro contre <b>l'annuaire</b>, chaque net contre <b>le mois dernier</b>, les doublons. Vous ne regardez que ce qui cloche ; le reste est prêt.</p>" +
+      "<div class='filtres'>" +
+        [["a-traiter", "À traiter", aTraiter], ["verifier", "Numéro à vérifier", c.verifier], ["ecarts", "Écart de plus de 20 %", c.ecarts], ["nouveaux", "Embauches", c.nouveaux], ["invite", "Pas encore inscrits", c.invite], ["pret", "Prêts", c.pret], ["tout", "Tout", c.n]]
+          .map(([k, l, n]) => "<button class='filtre' data-filtre='" + k + "' aria-pressed='" + (f === k) + "'>" + l + " <b>" + n + "</b></button>").join("") +
+      "</div>" +
+      "<div class='table-boite'><table><thead><tr><th>Salarié</th><th>Groupe</th><th>Téléphone</th><th>État</th><th class='num'>Net septembre</th><th class='num'>Août</th><th></th></tr></thead><tbody>" +
+        (lignes || "<tr><td colspan='7' style='text-align:center;color:var(--sourd);padding:26px'>Rien dans ce filtre.</td></tr>") +
+      "</tbody></table>" + (L.length > E.montrer ? "<div class='plus-lignes'><button class='bouton contour petit' data-plus>Afficher " + Math.min(200, L.length - E.montrer) + " de plus (" + (L.length - E.montrer) + " restantes)</button></div>" : "") + "</div>" +
+      "<div class='rangee'>" +
+        (c.ecarts ? "<button class='bouton contour' data-accepter-ecarts>Accepter les " + c.ecarts + " écarts</button>" : "") +
+        "<div class='pousse'></div>" +
+        "<span class='aide'>" + (c.verifier ? c.verifier + " lignes à vérifier seront <b>mises de côté</b>, pas payées" : "Aucune ligne bloquée") + "</span>" +
+        "<button class='bouton blanc' data-suivant>Passer aux bénéficiaires</button>" +
+      "</div>";
+  },
+  3(c) {
+    const R = 104, P = 2 * Math.PI * R;
+    const part = c.pret / c.n;
+    return "<h2>Qui est prêt à recevoir ?</h2>" +
+      "<p class='intro'>Chaque salarié a reçu <b>son propre lien</b> par SMS, lié à son matricule. Il crée son compte et prouve son numéro ; la boîte se met à jour en direct. Un lien de groupe obligerait chacun à « trouver son nom » dans une liste de " + c.n + " : c'est l'erreur qu'on évite.</p>" +
+      "<div class='boite'>" +
+        "<div class='anneau'><svg viewBox='0 0 240 240'><circle cx='120' cy='120' r='" + R + "' fill='none' stroke='#242424' stroke-width='16'/><circle id='arc' cx='120' cy='120' r='" + R + "' fill='none' stroke='#A2FF01' stroke-width='16' stroke-linecap='round' stroke-dasharray='" + P + "' stroke-dashoffset='" + (P * (1 - part)) + "' style='transition:stroke-dashoffset 600ms cubic-bezier(.23,1,.32,1)'/></svg>" +
+          "<div class='centre'><div><b id='pct'>" + Math.round(part * 100) + "%</b><span>prêts à recevoir</span></div></div></div>" +
+        "<div style='display:grid;gap:14px'>" +
+          "<div class='compteurs'>" +
+            "<div class='compteur pret'><b id='n-pret'>" + c.pret + "</b><span>prêts, compte actif</span></div>" +
+            "<div class='compteur'><b id='n-invite'>" + c.invite + "</b><span>invités, sans réponse</span></div>" +
+            "<div class='compteur verifier'><b>" + c.verifier + "</b><span>à vérifier, mis de côté</span></div>" +
+          "</div>" +
+          "<div class='fil'><h3><span>Viennent de terminer leur compte</span><span class='vif'>En direct</span></h3><ol id='fil'></ol></div>" +
+          "<div class='rangee'><button class='bouton contour' data-relancer " + (c.invite ? "" : "disabled") + ">Relancer les " + c.invite + " par SMS</button>" +
+            (E.relances ? "<span class='aide'>Relance n°" + E.relances + " envoyée</span>" : "") + "<div class='pousse'></div>" +
+            "<button class='bouton blanc' data-suivant>Préparer la validation</button></div>" +
+          "<p class='aide'>Vous n'avez pas à attendre tout le monde : les prêts sont payés tout de suite, le salaire des autres est <b>réservé " + RESERVE_HEURES + " h</b> et leur arrive dès qu'ils terminent.</p>" +
+        "</div>" +
+      "</div>";
+  },
+  4(c) {
+    const v = E.validation;
+    const dir = E.role === "dir";
+    return "<h2>" + (v.validee ? "Paie validée" : v.envoyee ? "En attente du dirigeant" : "Récapitulatif avant validation") + "</h2>" +
+      "<p class='intro'>Celui qui prépare n'est pas celui qui valide. Le comptable envoie ; le dirigeant valide avec son code, depuis la console ou son téléphone.</p>" +
+      "<div class='recap'>" +
+        "<div class='bloc'><span>Payé tout de suite</span><b>" + M(c.aPayer) + "</b><small>" + c.pret + " salariés prêts · " + F(c.aPayer) + "</small></div>" +
+        "<div class='bloc'><span>Réservé " + RESERVE_HEURES + " h</span><b>" + M(c.reserve) + "</b><small>" + (c.n - c.pret) + " pas encore prêts · rendu à l'entreprise sinon</small></div>" +
+        "<div class='bloc'><span>Frais SwimPay · 0,5 %</span><b>" + F(c.frais).replace(NB + "F", "") + "</b><small>F · les salariés reçoivent leur net entier</small></div>" +
+        "<div class='bloc total'><span>Total débité</span><b>" + M(c.total + c.frais) + "</b><small>" + F(c.total + c.frais) + " · écart avec août : " + (c.total >= c.avant ? "+" : "−") + F(Math.abs(c.total - c.avant)) + "</small></div>" +
+      "</div>" +
+      "<div class='validation" + (v.validee ? " ok" : "") + "'>" +
+        "<div class='qui'><b>" + (v.validee ? "✓" : dir ? "AK" : "CO") + "</b><div><strong>" + (v.validee ? "Validée par Awa Koné, dirigeante" : v.envoyee ? (dir ? "Awa Koné, dirigeante : à vous de valider" : "Envoyée à Awa Koné, dirigeante") : "Préparée par le cabinet comptable") + "</strong><br><span class='aide'>" +
+          (v.validee ? "Code saisi le 28 septembre à 14:32" : v.envoyee ? (dir ? "Saisissez votre code SwimPay pour autoriser le débit" : "Elle reçoit une notification sur son téléphone. Basculez en « Dirigeant » en haut pour jouer son rôle.") : "Vérifiez les chiffres, puis envoyez") + "</span></div></div>" +
+        (v.validee ? "<button class='bouton blanc' data-suivant>Lancer le paiement</button>"
+          : v.envoyee ? (dir ? "<div class='rangee'><div class='code' id='code'>" + [0,1,2,3].map((i) => "<input inputmode='numeric' maxlength='1' aria-label='Chiffre " + (i + 1) + "'>").join("") + "</div><button class='bouton blanc' data-valider disabled>Valider</button></div>" : "<span class='maquette'>En attente</span>")
+          : (dir ? "<span class='aide'>Le comptable n'a pas encore envoyé</span>" : "<button class='bouton blanc' data-envoyer>Envoyer au dirigeant</button>")) +
+      "</div>";
+  },
+  5(c) {
+    const p = E.paiement;
+    const fini = p.lance && p.faits >= c.pret;
+    return "<h2>" + (fini ? c.pret + " salariés payés" : p.lance ? "Paiement en cours…" : "Tout est prêt") + "</h2>" +
+      "<p class='intro'>Chaque salarié reçoit son net <b>sur son compte SwimPay</b>, puis le retire où il veut : son Mobile Money ou sa banque, sans frais.</p>" +
+      (p.lance ? "<div class='barre-prog'><i id='prog' style='width:" + Math.round(p.faits / c.pret * 100) + "%'></i></div><p class='aide' id='prog-txt'>" + p.faits + " / " + c.pret + " versés</p>"
+        : "<div class='rangee'><button class='bouton blanc' data-payer>Payer " + c.pret + " salariés · " + F(c.aPayer) + "</button></div>") +
+      (fini ?
+        "<div class='recap'>" +
+          "<div class='bloc total'><span>Versé</span><b>" + M(c.aPayer) + "</b><small>" + c.pret + " comptes crédités · " + F(c.aPayer) + "</small></div>" +
+          "<div class='bloc'><span>Durée</span><b>" + ((p.fin - p.debut) / 1000).toFixed(1).replace(".", ",") + NB + "s</b><small>de la validation au dernier versement</small></div>" +
+        "</div>" +
+        "<div class='reserve'><b>" + F(c.reserve) + " réservés pour " + (c.n - c.pret) + " salariés, jusqu'au 29 septembre 14:32</b><span class='aide'>Chacun reçoit son salaire dès qu'il termine son compte. Passé " + RESERVE_HEURES + " h, le reste revient sur le compte de l'entreprise et apparaît ici, avec la liste des personnes à payer autrement.</span></div>" +
+        (E.source === "odoo" ? "<div class='odoo-retour'><b>Odoo mis à jour</b><br><span class='aide'>" + c.pret + " bulletins de septembre marqués payés, avec la référence SwimPay de chaque versement. Les " + (c.n - c.pret) + " autres le seront à leur versement.</span></div>"
+          : "<div class='message'>Import par fichier : téléchargez le relevé des versements pour votre comptabilité. <b>Connecter Odoo</b> ferait ce rapprochement tout seul.</div>") +
+        "<div class='rangee'><button class='bouton contour' data-recommencer>Recommencer la démonstration</button></div>" : "");
+  },
+};
+function ligneSalarie(s) {
+  const e = ecartFort(s) && !s.ok;
+  const etat = s.etat === "verifier" && !s.ok ? "<span class='pastille verifier'>" + s.probleme.txt + "</span><span class='sous'>" + echappe(s.probleme.det) + "</span>"
+    : e ? "<span class='pastille ecart'>Écart " + (s.net > s.avant ? "+" : "") + Math.round((s.net - s.avant) / s.avant * 100) + NB + "%</span>"
+    : s.nouveau ? "<span class='pastille nouveau'>Embauche du mois</span>"
+    : s.etat === "invite" ? "<span class='pastille invite'>Invité, pas encore inscrit</span>"
+    : "<span class='pastille pret'>Prêt</span>";
+  const action = s.etat === "verifier" && !s.ok ? "<button class='act plein' data-corriger='" + s.mat + "'>Corriger</button>"
+    : e ? "<button class='act' data-accepter='" + s.mat + "'>Accepter</button>" : "";
+  const diff = s.nouveau ? "—" : F(s.avant);
+  return "<tr><td>" + echappe(s.nom) + "<span class='sous'>" + s.mat + "</span></td><td>" + s.groupe + "</td><td>" + s.tel + "</td><td>" + etat + "</td><td class='num'><b>" + F(s.net) + "</b></td><td class='num' style='color:var(--sourd)'>" + diff + "</td><td>" + action + "</td></tr>";
+}
+
+/* ============================ l'import de fichier : colonnes reconnues ============================ */
+const SYNONYMES = {
+  nom: ["employé", "employe", "salarié", "salarie", "nom", "nom complet", "name", "employee"],
+  matricule: ["matricule", "id", "référence", "reference", "badge", "numéro employé"],
+  telephone: ["téléphone portable", "telephone portable", "téléphone", "telephone", "mobile", "portable", "tel", "phone", "numéro mobile money"],
+  net: ["net à payer", "net a payer", "net", "salaire net", "montant", "net salary", "net_wage", "à payer"],
+};
+const sansAccent = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+function lireCsv(texte) {
+  const premiere = texte.split(/\r?\n/)[0] || "";
+  const sep = [";", ",", "\t"].map((c) => [c, premiere.split(c).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const lignes = [];
+  let cur = [], champ = "", guil = false;
+  for (let i = 0; i < texte.length; i++) {
+    const ch = texte[i];
+    if (guil) { if (ch === '"') { if (texte[i + 1] === '"') { champ += '"'; i++; } else guil = false; } else champ += ch; }
+    else if (ch === '"') guil = true;
+    else if (ch === sep) { cur.push(champ); champ = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && texte[i + 1] === "\n") i++; cur.push(champ); champ = ""; if (cur.some((x) => x.trim())) lignes.push(cur); cur = []; }
+    else champ += ch;
+  }
+  cur.push(champ); if (cur.some((x) => x.trim())) lignes.push(cur);
+  const entetes = lignes.shift() || [];
+  const carte = {};
+  for (const [cle, syn] of Object.entries(SYNONYMES)) {
+    const idx = entetes.findIndex((h) => syn.includes(sansAccent(h)));
+    carte[cle] = idx >= 0 ? { idx, entete: entetes[idx] } : null;
+  }
+  return { sep, entetes, lignes, carte };
+}
+function rapportFichier(f) {
+  const lib = { nom: "Nom", matricule: "Matricule", telephone: "Téléphone", net: "Net à payer" };
+  const manque = Object.entries(f.carte).filter(([k, v]) => !v && k !== "matricule").map(([k]) => lib[k]);
+  return "<div class='colonnes'>" + Object.entries(f.carte).map(([k, v]) =>
+      "<div class='colonne " + (v ? "ok" : k === "matricule" ? "" : "manque") + "'><span>" + lib[k] + "</span><b>" + (v ? echappe(v.entete) : k === "matricule" ? "facultatif" : "introuvable") + "</b></div>").join("") + "</div>" +
+    (manque.length
+      ? "<div class='message ko'>« " + echappe(f.nom) + " » : colonne" + (manque.length > 1 ? "s" : "") + " " + manque.join(", ") + " introuvable" + (manque.length > 1 ? "s" : "") + ". Renommez-la dans le fichier ou exportez depuis Odoo avec ce champ.</div>"
+      : "<div class='message ok'>« " + echappe(f.nom) + " » : <b>" + f.lignes.length + " lignes</b> lues (séparateur « " + (f.sep === "\t" ? "tabulation" : f.sep) + " »). <button class='bouton blanc petit' data-utiliser-fichier style='margin-left:8px'>Contrôler ces lignes</button></div>");
+}
+function salariesDuFichier(f) {
+  const g = (l, k) => f.carte[k] ? (l[f.carte[k].idx] || "").trim() : "";
+  graine = 777;
+  return f.lignes.map((l, i) => {
+    const tel = g(l, "telephone").replace(/\D/g, "");
+    const net = Number(g(l, "net").replace(/[^\d,.-]/g, "").replace(/\s/g, "").replace(",", ".")) || 0;
+    const s = { mat: g(l, "matricule") || "L" + (i + 2), nom: g(l, "nom") || "Sans nom", groupe: "—", tel: tel.replace(/(\d{2})(?=\d)/g, "$1 "), net: Math.round(net), avant: Math.round(net), etat: alea() < .85 ? "pret" : "invite", probleme: null, ok: false };
+    if (tel.length !== 10) { s.etat = "verifier"; s.probleme = { code: "prefixe", txt: "Numéro invalide", det: tel.length + " chiffres au lieu de 10" }; }
+    else if (!["07", "05", "01"].includes(tel.slice(0, 2))) { s.etat = "verifier"; s.probleme = { code: "prefixe", txt: "Préfixe inconnu", det: "Un numéro ivoirien commence par 07, 05 ou 01" }; }
+    return s;
+  });
+}
+
+/* ============================ le direct : les comptes qui se terminent ============================ */
+function demarrerVif() {
+  const fil = document.getElementById("fil");
+  const deja = E.salaries.filter((s) => s.etat === "pret").slice(-6).reverse();
+  fil.innerHTML = deja.map((s) => "<li><b>" + echappe(s.nom) + "</b><span>" + s.mat + " · plus tôt</span></li>").join("");
+  vif = setInterval(() => {
+    const attente = E.salaries.filter((s) => s.etat === "invite");
+    if (!attente.length) { clearInterval(vif); return; }
+    const s = attente[Math.floor(Math.random() * attente.length)];
+    s.etat = "pret";
+    const c = compte();
+    const R = 104, P = 2 * Math.PI * R;
+    const arc = document.getElementById("arc");
+    if (!arc) return;
+    arc.setAttribute("stroke-dashoffset", P * (1 - c.pret / c.n));
+    document.getElementById("pct").textContent = Math.round(c.pret / c.n * 100) + "%";
+    document.getElementById("n-pret").textContent = c.pret;
+    document.getElementById("n-invite").textContent = c.invite;
+    const li = document.createElement("li");
+    li.innerHTML = "<b>" + echappe(s.nom) + "</b><span>" + s.mat + " · à l'instant</span>";
+    fil.prepend(li);
+    const rel = document.querySelector("[data-relancer]");
+    if (rel) rel.textContent = "Relancer les " + c.invite + " par SMS";
+    rafraichirChiffres();
+  }, 1400);
+}
+function rafraichirChiffres() {
+  const c = compte();
+  const els = document.querySelectorAll("#chiffres .chiffre");
+  if (els[2]) els[2].innerHTML = "<span>Prêts à recevoir</span><b>" + Math.round(c.pret / c.n * 100) + NB + "%</b><small>" + c.pret + " comptes SwimPay actifs</small>";
+}
+
+/* ============================ branchements ============================ */
+function brancher(p) {
+  const o = E.odoo;
+  ["url", "base", "user", "cle"].forEach((k) => { const i = p.querySelector("#o-" + k); if (i) i.addEventListener("input", () => { o[k] = i.value; }); });
+  const bo = p.querySelector("[data-odoo]");
+  if (bo) bo.addEventListener("click", () => {
+    bo.disabled = true; bo.textContent = "Lecture des bulletins validés…";
+    setTimeout(() => { E.source = "odoo"; E.salaries = genererSalaries(1000); aller(2); }, 900);
+  });
+  const ex = p.querySelector("[data-exemple]");
+  if (ex) ex.addEventListener("click", () => { E.source = "fichier"; E.salaries = genererSalaries(1000); aller(2); });
+  const fi = p.querySelector("[data-fichier]");
+  if (fi) fi.addEventListener("change", () => {
+    const f = fi.files && fi.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { E.fichier = Object.assign(lireCsv(String(r.result)), { nom: f.name }); rendre(); };
+    r.readAsText(f, "utf-8");
+  });
+  const uf = p.querySelector("[data-utiliser-fichier]");
+  if (uf) uf.addEventListener("click", () => { E.source = "fichier"; E.salaries = salariesDuFichier(E.fichier); E.filtre = "tout"; aller(2); });
+
+  p.querySelectorAll("[data-filtre]").forEach((b) => b.addEventListener("click", () => { E.filtre = b.dataset.filtre; E.montrer = 60; rendre(); }));
+  const plus = p.querySelector("[data-plus]");
+  if (plus) plus.addEventListener("click", () => { E.montrer += 200; rendre(); });
+  p.querySelectorAll("[data-accepter]").forEach((b) => b.addEventListener("click", () => { E.salaries.find((s) => s.mat === b.dataset.accepter).ok = true; rendre(); }));
+  const ae = p.querySelector("[data-accepter-ecarts]");
+  if (ae) ae.addEventListener("click", () => { E.salaries.forEach((s) => { if (ecartFort(s)) s.ok = true; }); rendre(); });
+  p.querySelectorAll("[data-corriger]").forEach((b) => b.addEventListener("click", () => {
+    const s = E.salaries.find((x) => x.mat === b.dataset.corriger);
+    const td = b.closest("tr").children[2];
+    td.innerHTML = "<input class='saisie' style='height:34px;width:150px' value='" + s.tel + "' aria-label='Numéro corrigé'> <button class='act plein'>OK</button>";
+    const inp = td.querySelector("input"); inp.focus();
+    td.querySelector("button").addEventListener("click", () => {
+      const c = inp.value.replace(/\D/g, "");
+      if (c.length !== 10 || !["07", "05", "01"].includes(c.slice(0, 2))) { inp.style.borderColor = "var(--erreur)"; return; }
+      s.tel = c.replace(/(\d{2})(?=\d)/g, "$1 "); s.ok = true; s.etat = "invite"; rendre();
+    });
+  }));
+  p.querySelectorAll("[data-suivant]").forEach((b) => b.addEventListener("click", () => aller(E.etape + 1)));
+  const rl = p.querySelector("[data-relancer]");
+  if (rl) rl.addEventListener("click", () => { E.relances++; clearInterval(vif); rendre(); demarrerVif(); });
+  const env = p.querySelector("[data-envoyer]");
+  if (env) env.addEventListener("click", () => { E.validation.envoyee = true; rendre(); });
+  const code = p.querySelector("#code");
+  if (code) {
+    const ins = [...code.querySelectorAll("input")];
+    const val = p.querySelector("[data-valider]");
+    ins.forEach((inp, i) => {
+      inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D/g, "").slice(-1); if (inp.value && ins[i + 1]) ins[i + 1].focus(); val.disabled = ins.some((x) => !x.value); });
+      inp.addEventListener("keydown", (e) => { if (e.key === "Backspace" && !inp.value && ins[i - 1]) ins[i - 1].focus(); });
+    });
+    ins[0].focus();
+    val.addEventListener("click", () => { E.validation.validee = true; rendre(); });
+  }
+  const pay = p.querySelector("[data-payer]");
+  if (pay) pay.addEventListener("click", () => {
+    const c = compte();
+    E.paiement = { lance: true, faits: 0, debut: performance.now(), fin: null };
+    rendre();
+    const t = setInterval(() => {
+      E.paiement.faits = Math.min(c.pret, E.paiement.faits + Math.ceil(c.pret / 28));
+      const pr = document.getElementById("prog"), tx = document.getElementById("prog-txt");
+      if (pr) pr.style.width = Math.round(E.paiement.faits / c.pret * 100) + "%";
+      if (tx) tx.textContent = E.paiement.faits + " / " + c.pret + " versés";
+      if (E.paiement.faits >= c.pret) { clearInterval(t); E.paiement.fin = performance.now(); rendre(); }
+    }, 90);
+  });
+  const rc = p.querySelector("[data-recommencer]");
+  if (rc) rc.addEventListener("click", () => { E = neuf(); definirRole("compta"); aller(1); });
+}
+function definirRole(r) {
+  E.role = r;
+  document.getElementById("r-compta").setAttribute("aria-pressed", r === "compta");
+  document.getElementById("r-dir").setAttribute("aria-pressed", r === "dir");
+}
+document.getElementById("r-compta").addEventListener("click", () => { definirRole("compta"); rendre(); });
+document.getElementById("r-dir").addEventListener("click", () => { definirRole("dir"); rendre(); });
+rendre();
+</script>

@@ -1,0 +1,450 @@
+<title>Accueil acide</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
+<style>
+/* ------------------------------------------------------------------
+   CHROME : suit le thème du lecteur. SPÉCIMENS : couleurs FIXES
+   (écrans sombres, ils restent sombres sous un lecteur clair).
+   Grammaire citée : FluxPay (Outfit, rayures verticales, UN accent
+   acide par écran, carte de solde, chip capsule) + relevé Riseo n°3
+   (pilule flottante + FAB séparé, glare de carte, écran Cartes).
+   ------------------------------------------------------------------ */
+:root {
+  color-scheme: light dark;
+  --fond: #EFECE5; --carte: #FBFAF7; --texte: #23262C; --sourd: #6C6960;
+  --trait: rgba(35, 38, 44, .13); --accent: #7A5C22;
+
+  /* jetons du spécimen — fixes */
+  --sp-fond: #0B0C0E;
+  --sp-surface: #15171C;
+  --sp-surface-2: #1B1E24;
+  --sp-trait: #23262D;
+  --sp-encre: #F4F5F7;
+  --sp-sourd: #8B909B;
+  --sp-acide: #C6F432;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fond: #101216; --carte: #191C22; --texte: #E8E6E1; --sourd: #9B988F;
+    --trait: rgba(232, 230, 225, .13); --accent: #CEAA62;
+  }
+}
+:root[data-theme="dark"] {
+  --fond: #101216; --carte: #191C22; --texte: #E8E6E1; --sourd: #9B988F;
+  --trait: rgba(232, 230, 225, .13); --accent: #CEAA62;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--fond); color: var(--texte);
+  font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+}
+.page { max-width: 1360px; margin: 0 auto; padding: 52px 24px 64px; }
+.chapeau { max-width: 68ch; margin-bottom: 34px; }
+h1 { margin: 0 0 8px; font-size: clamp(28px, 4vw, 40px); font-weight: 800; letter-spacing: -.03em; line-height: 1.05; }
+.chapeau p { margin: 0; color: var(--sourd); font-size: 15.5px; }
+.chapeau b { color: var(--texte); font-weight: 650; }
+
+.bande { display: flex; align-items: center; gap: 22px; overflow-x: auto; padding: 14px 8px 34px; }
+.lien { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--sourd); font-size: 12.5px; max-width: 110px; text-align: center; }
+.note { color: var(--sourd); font-size: 13.5px; max-width: 72ch; border-top: 1px solid var(--trait); padding-top: 22px; }
+.ecran-nom { text-align: center; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--sourd); font-weight: 700; margin: 0 0 8px; }
+
+/* ---------------- le téléphone ---------------- */
+.phone {
+  flex: 0 0 390px; width: 390px; height: 844px;
+  border-radius: 35px; border: 1px solid #23262D;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, .022) 0 1px, transparent 1px 8px),
+    var(--sp-fond);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .45);
+  overflow: hidden; display: flex; flex-direction: column;
+  color: var(--sp-encre);
+  font-family: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.statusbar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 26px 0 30px; font-size: 14px; font-weight: 500; }
+.statusbar svg { display: block; }
+.home-ind { height: 24px; display: grid; place-items: center; }
+.home-ind i { width: 134px; height: 5px; border-radius: 999px; background: rgba(244, 245, 247, .28); }
+
+/* header deux lignes (FluxPay) */
+.header2 { display: flex; align-items: center; padding: 14px 20px 0; }
+.header2 small { display: block; color: var(--sp-sourd); font-size: 13px; font-weight: 400; }
+.header2 .nom { color: var(--sp-encre); font-weight: 600; font-size: 24px; letter-spacing: -.01em; line-height: 1.15; }
+.pousse { flex: 1; }
+.cloche { position: relative; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--sp-trait); display: grid; place-items: center; }
+.cloche i { position: absolute; top: 9px; right: 10px; width: 7px; height: 7px; border-radius: 999px; background: var(--sp-acide); border: 1.5px solid var(--sp-fond); }
+
+/* carte de solde (FluxPay) + lueur + glare (Riseo) */
+.halo { position: relative; }
+.halo::before {
+  content: ""; position: absolute; inset: -30px -10px auto;
+  height: 220px; pointer-events: none;
+  background: radial-gradient(60% 70% at 50% 40%, rgba(198, 244, 50, .12), transparent 70%);
+}
+.solde-carte {
+  position: relative; margin: 20px 20px 0; padding: 18px;
+  border-radius: 18px; background: var(--sp-surface);
+  border: 1px solid var(--sp-trait); overflow: hidden;
+}
+.solde-carte::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, .05) 46%, rgba(255, 255, 255, .04) 58%, transparent 72%);
+}
+.solde-carte .ligne1 { display: flex; align-items: center; gap: 8px; color: var(--sp-sourd); font-size: 12.5px; }
+.solde-carte .montant { font-size: 32px; font-weight: 600; letter-spacing: -.01em; margin-top: 2px; }
+.solde-carte .montant span { opacity: .38; }
+.solde-carte .delta { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; color: var(--sp-sourd); }
+.solde-carte .delta b { color: var(--sp-acide); font-weight: 500; }
+.chip-capsule {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 14px;
+  height: 32px; padding: 0 14px 0 6px; border-radius: 32px;
+  background: var(--sp-surface-2); border: 1px solid var(--sp-trait);
+  font-size: 12.5px; color: var(--sp-sourd);
+}
+.chip-capsule i { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, #D8C289, #A8925B); }
+
+/* actions rondes — cercles outline */
+.actions { display: flex; justify-content: space-between; padding: 20px 26px 4px; }
+.action { display: flex; flex-direction: column; align-items: center; gap: 7px; font-size: 12px; color: var(--sp-sourd); font-weight: 400; }
+.action i { width: 56px; height: 56px; border-radius: 50%; border: 1px solid var(--sp-trait); background: rgba(255, 255, 255, .02); display: grid; place-items: center; color: var(--sp-encre); }
+
+/* sections + rangées */
+.sect { margin: 18px 20px 0; }
+.sect h3 { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 6px; font-size: 13px; font-weight: 500; color: var(--sp-sourd); }
+.sect h3 a { font-size: 12.5px; color: var(--sp-sourd); text-decoration: none; }
+.row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 0; }
+.row + .row { border-top: 1px solid rgba(255, 255, 255, .05); }
+.dirig { width: 42px; height: 42px; border-radius: 50%; background: var(--sp-surface); border: 1px solid var(--sp-trait); display: grid; place-items: center; flex: 0 0 auto; }
+.row .txt { flex: 1; min-width: 0; }
+.row .txt b { display: block; font-size: 14.5px; font-weight: 500; }
+.row .txt span { display: block; font-size: 12.5px; color: var(--sp-sourd); }
+.row .fin { text-align: right; }
+.row .fin b { display: block; font-size: 14.5px; font-weight: 500; }
+.row .fin b.credit { color: var(--sp-acide); }
+.row .fin span { display: block; font-size: 12px; color: var(--sp-sourd); }
+
+/* pilule flottante + FAB séparé (Riseo relevé n°3) */
+.navzone { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding: 10px 22px 2px; }
+.navpill {
+  display: flex; align-items: center; gap: 8px;
+  height: 58px; padding: 0 12px; border-radius: 999px;
+  background: var(--sp-surface); border: 1px solid var(--sp-trait);
+}
+.navpill i { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: var(--sp-sourd); }
+.navpill i.actif { color: var(--sp-encre); background: var(--sp-surface-2); }
+.fab {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--sp-acide); color: #0B0C0E;
+  display: grid; place-items: center;
+  box-shadow: inset -2px -2px 4px rgba(0, 0, 0, .18), 0 8px 20px rgba(198, 244, 50, .18);
+}
+
+/* --------- écran B : Ma carte --------- */
+.topbar { display: flex; align-items: center; height: 56px; padding: 0 14px; }
+.topbar .rond { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--sp-trait); }
+.topbar h2 { flex: 1; text-align: center; margin: 0; font-size: 16px; font-weight: 600; }
+.topbar .vide { width: 40px; }
+.carte-bancaire {
+  position: relative; margin: 12px 44px 0; aspect-ratio: 302 / 182;
+  border-radius: 14px; padding: 16px; overflow: hidden;
+  background: linear-gradient(150deg, #23262B, #0E0F12 60%);
+  border: 1px solid #2A2E36;
+  display: flex; flex-direction: column;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, .5);
+}
+.carte-bancaire::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 32%, rgba(255, 255, 255, .05) 47%, rgba(255, 255, 255, .04) 57%, transparent 70%);
+}
+.carte-bancaire .marque { font-weight: 600; font-size: 16px; }
+.carte-bancaire .puce { width: 34px; height: 26px; border-radius: 6px; margin-top: 10px; background: linear-gradient(135deg, #D8C289, #A8925B); position: relative; }
+.carte-bancaire .puce::after { content: ""; position: absolute; inset: 5px 4px; border: 1px solid rgba(11, 12, 14, .35); border-radius: 3px; }
+.carte-bancaire .bas { margin-top: auto; display: flex; align-items: flex-end; }
+.carte-bancaire .bas small { color: var(--sp-sourd); font-size: 12.5px; letter-spacing: .06em; }
+.reseau { margin-left: auto; display: flex; }
+.reseau i { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, .45); }
+.reseau i + i { margin-left: -8px; border-color: rgba(255, 255, 255, .22); }
+.carte-nom { text-align: center; margin: 14px 0 0; font-weight: 600; font-size: 16px; }
+.points { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
+.points i { width: 14px; height: 4px; border-radius: 999px; background: var(--sp-surface-2); }
+.points i.actif { background: var(--sp-acide); }
+.segments { display: flex; gap: 10px; padding: 16px 20px 0; }
+.segment { flex: 1; height: 44px; border-radius: 999px; display: grid; place-items: center; font-size: 14px; color: var(--sp-sourd); background: var(--sp-surface); border: 1px solid var(--sp-trait); }
+.segment.actif { color: var(--sp-encre); background: var(--sp-surface-2); }
+.liste-actions { margin: 16px 20px 0; padding: 4px 16px; border-radius: 18px; background: var(--sp-surface); border: 1px solid var(--sp-trait); }
+.liste-actions .row { min-height: 60px; }
+.chev { color: var(--sp-sourd); flex: 0 0 auto; }
+
+/* --------- écran C : Envoyer --------- */
+.saisie { text-align: center; padding: 26px 20px 8px; }
+.saisie .montant { font-size: 52px; font-weight: 600; letter-spacing: -.01em; }
+.saisie .montant i { display: inline-block; width: 2px; height: 40px; background: var(--sp-acide); margin-left: 4px; vertical-align: -4px; animation: cli 1.1s steps(1) infinite; }
+@keyframes cli { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .saisie .montant i { animation: none; } }
+.saisie small { font-size: 13px; color: var(--sp-sourd); }
+.dest { margin: 14px 20px 0; padding: 4px 16px; border-radius: 18px; background: var(--sp-surface); border: 1px solid var(--sp-trait); }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--sp-surface-2); border: 1px solid var(--sp-trait); display: grid; place-items: center; font-size: 13px; font-weight: 500; flex: 0 0 auto; }
+.numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 10px 22px; margin-top: auto; }
+.numpad button { appearance: none; border: 0; background: transparent; border-radius: 12px; height: 58px; font: inherit; font-size: 23px; font-weight: 400; color: var(--sp-encre); }
+.numpad button:hover { background: var(--sp-surface); }
+.cta {
+  margin: 4px 20px 10px; height: 54px; border-radius: 999px; border: 0;
+  background: var(--sp-acide); color: #0B0C0E;
+  font: inherit; font-size: 16px; font-weight: 600; width: calc(100% - 40px);
+}
+</style>
+
+<div class="page">
+  <header class="chapeau">
+    <h1>Accueil acide — v5</h1>
+    <p>Écran 3 Personnel, cinquième variante, sombre, et son flow : Accueil → Ma carte → Envoyer.
+    Grammaire citée du relevé <b>FluxPay</b> — Outfit, fines rayures verticales, <b>un seul élément
+    acide par écran</b> (le FAB, la pagination, le CTA), carte de solde à delta + œil, chip capsule —
+    croisée avec le relevé <b>Riseo n°3</b> : pilule de navigation flottante + FAB séparé, glare de
+    carte, écran Cartes à liste d'actions. Montants sans devise.</p>
+  </header>
+
+  <div class="bande">
+
+    <!-- ============ ÉCRAN A — ACCUEIL ============ -->
+    <div>
+      <p class="ecran-nom">Accueil</p>
+      <section class="phone">
+        <div class="statusbar">
+          <span>9:41</span>
+          <svg width="62" height="12" viewBox="0 0 62 12" fill="currentColor"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="1" width="3" height="11" rx="1"/><path d="M28 5a7 7 0 0 1 9 0l-1.4 1.6a5 5 0 0 0-6.2 0Z"/><path d="M30 8a4 4 0 0 1 5 0l-2.5 2.8Z"/><rect x="42" y="2.5" width="16" height="8" rx="2.5" fill="none" stroke="currentColor"/><rect x="44" y="4.5" width="10" height="4" rx="1"/><rect x="59" y="5" width="2" height="3" rx="1"/></svg>
+        </div>
+
+        <div class="header2">
+          <div>
+            <small>Bonsoir</small>
+            <div class="nom">Camille Laurent</div>
+          </div>
+          <span class="pousse"></span>
+          <span class="cloche">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 1 1 12 0c0 4 1.6 5.4 2 6H4c.4-.6 2-2 2-6"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>
+            <i></i>
+          </span>
+        </div>
+
+        <div class="halo">
+          <div class="solde-carte">
+            <div class="ligne1">
+              N° de compte ····9654
+              <span class="pousse"></span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+            <div class="montant">1 254 500<span>,00</span></div>
+            <div class="delta"><b>+45 300 (3,7 %)</b> ce mois</div>
+            <span class="chip-capsule"><i></i>··9654 · compte principal</span>
+          </div>
+        </div>
+
+        <div class="actions">
+          <div class="action"><i>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+          </i>Envoyer</div>
+          <div class="action"><i>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17M15 17H7V9"/></svg>
+          </i>Recevoir</div>
+          <div class="action"><i>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>
+          </i>Transférer</div>
+          <div class="action"><i>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+          </i>Historique</div>
+        </div>
+
+        <div class="sect">
+          <h3>Hier <a href="#">Tout voir</a></h3>
+          <div class="row">
+            <span class="dirig">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--sp-acide)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7 7 17M15 17H7V9"/></svg>
+            </span>
+            <span class="txt"><b>Salaire</b><span>Virement reçu</span></span>
+            <span class="fin"><b class="credit">+245 000</b><span>09:04</span></span>
+          </div>
+          <div class="row">
+            <span class="dirig">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+            </span>
+            <span class="txt"><b>Marché central</b><span>Paiement marchand</span></span>
+            <span class="fin"><b>−12 500</b><span>18:11</span></span>
+          </div>
+          <div class="row">
+            <span class="dirig">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M9 7h8v8"/></svg>
+            </span>
+            <span class="txt"><b>Recharge mobile</b><span>Crédit d'appel</span></span>
+            <span class="fin"><b>−5 000</b><span>12:40</span></span>
+          </div>
+        </div>
+
+        <div class="navzone">
+          <div class="navpill">
+            <i class="actif">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 11 8-7 8 7v9h-5v-6h-6v6H4z"/></svg>
+            </i>
+            <i>
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/></svg>
+            </i>
+            <i>
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 19V10M12 19V5M19 19v-6" /></svg>
+            </i>
+          </div>
+          <span class="fab">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </span>
+        </div>
+        <div class="home-ind"><i></i></div>
+      </section>
+    </div>
+
+    <div class="lien">
+      <svg width="34" height="14" viewBox="0 0 34 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h28M26 3l4 4-4 4"/></svg>
+      onglet « Carte »
+    </div>
+
+    <!-- ============ ÉCRAN B — MA CARTE ============ -->
+    <div>
+      <p class="ecran-nom">Ma carte</p>
+      <section class="phone">
+        <div class="statusbar">
+          <span>9:41</span>
+          <svg width="62" height="12" viewBox="0 0 62 12" fill="currentColor"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="1" width="3" height="11" rx="1"/><path d="M28 5a7 7 0 0 1 9 0l-1.4 1.6a5 5 0 0 0-6.2 0Z"/><path d="M30 8a4 4 0 0 1 5 0l-2.5 2.8Z"/><rect x="42" y="2.5" width="16" height="8" rx="2.5" fill="none" stroke="currentColor"/><rect x="44" y="4.5" width="10" height="4" rx="1"/><rect x="59" y="5" width="2" height="3" rx="1"/></svg>
+        </div>
+
+        <div class="topbar">
+          <span class="rond">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+          </span>
+          <h2>Ma carte</h2>
+          <span class="vide"></span>
+        </div>
+
+        <div class="carte-bancaire">
+          <div class="marque">Camille L.</div>
+          <div class="puce"></div>
+          <div class="bas">
+            <small>····9654 · exp. 11/29</small>
+            <span class="reseau"><i></i><i></i></span>
+          </div>
+        </div>
+        <p class="carte-nom">Carte principale</p>
+        <div class="points"><i class="actif"></i><i></i><i></i></div>
+
+        <div class="segments">
+          <span class="segment actif">Détails</span>
+          <span class="segment">Activité</span>
+        </div>
+
+        <div class="liste-actions">
+          <div class="row">
+            <span class="dirig">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="12" rx="3"/><path d="M7 7V6a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v1"/></svg>
+            </span>
+            <span class="txt"><b>Ajouter au portefeuille</b><span>Paiement depuis le téléphone</span></span>
+            <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+          </div>
+          <div class="row">
+            <span class="dirig">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 15.5v.5" stroke-linecap="round"/></svg>
+            </span>
+            <span class="txt"><b>Plafond de dépense</b><span>Retraits et paiements</span></span>
+            <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4.5-1L20 7.5a2 2 0 0 0-3-3L5.5 16Z"/></svg>
+          </div>
+          <div class="row">
+            <span class="dirig">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            </span>
+            <span class="txt"><b>Verrouiller la carte</b><span>Temporaire, réversible</span></span>
+            <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+          </div>
+          <div class="row">
+            <span class="dirig">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 14-5M20 12a8 8 0 0 1-14 5"/><path d="M18 3v4h-4M6 21v-4h4"/></svg>
+            </span>
+            <span class="txt"><b>Remplacer la carte</b><span>Perte, vol, usure</span></span>
+            <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+          </div>
+        </div>
+
+        <div class="navzone">
+          <div class="navpill">
+            <i>
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 11 8-7 8 7v9h-5v-6h-6v6H4z"/></svg>
+            </i>
+            <i class="actif">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/></svg>
+            </i>
+            <i>
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 19V10M12 19V5M19 19v-6" /></svg>
+            </i>
+          </div>
+          <span class="fab">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </span>
+        </div>
+        <div class="home-ind"><i></i></div>
+      </section>
+    </div>
+
+    <div class="lien">
+      <svg width="34" height="14" viewBox="0 0 34 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7h28M26 3l4 4-4 4"/></svg>
+      appui « Envoyer » depuis l'accueil
+    </div>
+
+    <!-- ============ ÉCRAN C — ENVOYER ============ -->
+    <div>
+      <p class="ecran-nom">Envoyer</p>
+      <section class="phone">
+        <div class="statusbar">
+          <span>9:41</span>
+          <svg width="62" height="12" viewBox="0 0 62 12" fill="currentColor"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="1" width="3" height="11" rx="1"/><path d="M28 5a7 7 0 0 1 9 0l-1.4 1.6a5 5 0 0 0-6.2 0Z"/><path d="M30 8a4 4 0 0 1 5 0l-2.5 2.8Z"/><rect x="42" y="2.5" width="16" height="8" rx="2.5" fill="none" stroke="currentColor"/><rect x="44" y="4.5" width="10" height="4" rx="1"/><rect x="59" y="5" width="2" height="3" rx="1"/></svg>
+        </div>
+
+        <div class="topbar">
+          <span class="rond">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 6-6 6 6 6"/></svg>
+          </span>
+          <h2>Envoyer</h2>
+          <span class="vide"></span>
+        </div>
+
+        <div class="saisie">
+          <div class="montant">25 000<i></i></div>
+          <small>Solde disponible · 1 254 500</small>
+        </div>
+
+        <div class="dest">
+          <div class="row">
+            <span class="avatar">AK</span>
+            <span class="txt"><b>Awa K.</b><span>Numéro se terminant par 07 88</span></span>
+            <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+          </div>
+        </div>
+
+        <div class="numpad">
+          <button>1</button><button>2</button><button>3</button>
+          <button>4</button><button>5</button><button>6</button>
+          <button>7</button><button>8</button><button>9</button>
+          <button>·</button><button>0</button>
+          <button aria-label="Effacer">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5h11a1.5 1.5 0 0 1 1.5 1.5v11A1.5 1.5 0 0 1 19 19H8l-5.5-7Z"/><path d="m11 9.5 5 5M16 9.5l-5 5"/></svg>
+          </button>
+        </div>
+        <button class="cta">Envoyer 25 000</button>
+        <div class="home-ind"><i></i></div>
+      </section>
+    </div>
+
+  </div>
+
+  <p class="note">Un seul élément acide par écran — le FAB (Accueil), la pagination active (Ma carte),
+  le CTA (Envoyer) ; les crédits reprennent la même encre acide en signal sémantique. Rayures
+  verticales à 2 % : la texture du relevé, pas un motif. Montants sans devise, aucune géographie,
+  icônes en un seul trait 1,6. Les écrans restent sombres sous les deux thèmes du lecteur —
+  spécimen cité, pas identité imposée.</p>
+</div>

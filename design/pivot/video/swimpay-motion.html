@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>SwimPay en mouvement</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Archivo:wdth,wght@62..125,500..900&display=block">
+<style>
+/* La video motion design de SwimPay, 1080 x 1920, 40 s, 30 images/s.
+   Tout est pilote par seek(t) : aucune animation CSS, aucune transition.
+   Chaque image est donc exactement reproductible, et l'export est cadre a
+   l'image pres (capture.js). Palette, polices et ecrans : ceux de l'app et du
+   site. Les fonctionnalites montrees sont celles du site, sans les promesses
+   que le repo ne couvre pas encore (carte Visa, NFC, interets). */
+:root {
+  --noir: #141414; --gris: #434343; --blanc: #FFFFFF; --acide: #A2FF01; --sourd: #909090;
+  --surface: #1C1C1C; --surface2: #242424; --trait: #2E2E2E;
+  --titre: "Archivo", "Outfit", sans-serif; --corps: "Outfit", system-ui, sans-serif;
+  --grad: linear-gradient(158deg, #6FBF00 0%, #8FE500 16%, #A2FF01 42%, #BFFF2E 68%, #E2FF8C 92%, #F2FFC4 100%);
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--noir); }
+body { font-family: var(--corps); color: var(--blanc); -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; }
+#cadre { position: absolute; inset: 0; overflow: hidden; background: var(--noir); }
+.couche { position: absolute; inset: 0; }
+.grain { position: absolute; inset: 0; background: url("../assets/grain-tuile.png") repeat; background-size: 180px; opacity: .10; mix-blend-mode: overlay; pointer-events: none; z-index: 90; }
+.fond-acide { background: var(--grad); }
+.fond-acide::after { content: ""; position: absolute; inset: 0; background: radial-gradient(118% 80% at 86% 2%, rgba(255,255,255,.30), transparent 62%), radial-gradient(92% 72% at 6% 98%, rgba(60,120,0,.30), transparent 58%); }
+.scene { position: absolute; inset: 0; opacity: 0; }
+
+.titre { font-family: var(--titre); font-weight: 900; font-stretch: 72%; letter-spacing: -0.02em; line-height: .88; text-transform: uppercase; }
+.sur { font-size: 30px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+.sous { font-size: 40px; line-height: 1.25; font-weight: 500; }
+.bloc-texte { position: absolute; left: 80px; right: 80px; }
+
+/* le telephone, le meme que sur le site et dans la demo */
+.tel { position: absolute; width: 600px; height: 1260px; left: 240px; border-radius: 86px; padding: 14px;
+  background: linear-gradient(145deg, #3A3A3A, #111111 40%, #2A2A2A); box-shadow: 0 60px 120px -40px rgba(0,0,0,.9), inset 0 0 0 2px #4A4A4A; }
+.ecran { position: relative; width: 100%; height: 100%; border-radius: 72px; overflow: hidden; background: var(--noir); }
+.ecran .ile { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); width: 170px; height: 48px; border-radius: 99px; background: #000; z-index: 10; }
+.heure { position: absolute; top: 26px; left: 52px; font-size: 24px; font-weight: 600; z-index: 10; }
+.hero { position: absolute; left: 0; right: 0; top: 0; border-radius: 0 0 54px 54px; background: var(--grad); color: var(--noir); padding: 110px 34px 34px; }
+.plaque { border-radius: 40px; padding: 26px 28px; background: rgba(255,255,255,.36); border: 2px solid rgba(255,255,255,.55); }
+.plaque small { font-size: 22px; color: rgba(20,20,20,.72); display: block; }
+.montant { font-family: var(--titre); font-weight: 900; font-stretch: 72%; letter-spacing: -0.02em; font-size: 104px; line-height: 1; }
+.montant i { font-style: normal; font-size: 48px; }
+.corps-ecran { position: absolute; left: 34px; right: 34px; }
+.ligne { display: flex; align-items: center; gap: 18px; padding: 20px 0; border-bottom: 2px solid var(--trait); font-size: 26px; }
+.ligne .av { width: 64px; height: 64px; border-radius: 99px; background: var(--surface2); display: grid; place-items: center; font-weight: 700; font-size: 22px; flex: none; }
+.ligne .nm { flex: 1; font-weight: 500; }
+.ligne .nm small { display: block; color: var(--sourd); font-size: 20px; font-weight: 400; }
+.ligne .vl { font-weight: 600; }
+.coche { width: 44px; height: 44px; border-radius: 99px; background: var(--acide); color: var(--noir); display: grid; place-items: center; font-weight: 800; font-size: 26px; }
+.pilule { height: 96px; border-radius: 999px; display: grid; place-items: center; font-weight: 600; font-size: 30px; }
+.pilule.acide { background: var(--acide); color: var(--noir); }
+.pilule.blanche { background: var(--blanc); color: var(--noir); }
+.puce-reseau { position: absolute; height: 84px; padding: 0 34px; border-radius: 999px; display: flex; align-items: center; gap: 14px; font-size: 32px; font-weight: 600; background: var(--surface); border: 2px solid var(--trait); white-space: nowrap; }
+.puce-reseau i { width: 22px; height: 22px; border-radius: 99px; }
+.verre { border-radius: 36px; background: var(--surface); border: 2px solid var(--trait); }
+</style>
+</head>
+<body>
+<div id="cadre">
+
+  <!-- 1. l'accroche -->
+  <div class="scene" id="s1">
+    <div class="couche fond-acide"></div>
+    <div id="s1-photo" style="position:absolute;left:60px;right:60px;top:120px;height:1180px;border-radius:0 0 90px 90px;overflow:hidden;">
+      <img src="../assets/hero-personne.jpg" style="width:100%;height:100%;object-fit:cover;object-position:50% 20%" alt="">
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,20,20,0) 45%,rgba(20,20,20,.55) 100%)"></div>
+    </div>
+    <div class="bloc-texte" style="top:1360px;color:var(--noir)">
+      <div class="titre" id="s1-m1" style="font-size:158px">Bien plus</div>
+      <div class="titre" id="s1-m2" style="font-size:158px">qu'une</div>
+      <div class="titre" id="s1-m3" style="font-size:158px">application</div>
+    </div>
+  </div>
+
+  <!-- 2. un seul compte -->
+  <div class="scene" id="s2">
+    <div class="bloc-texte" style="top:120px">
+      <div class="sur" style="color:var(--acide)" id="s2-sur">SwimPay</div>
+      <div class="titre" id="s2-t" style="font-size:150px;margin-top:18px">Un seul<br>compte</div>
+      <div class="sous" id="s2-s" style="color:var(--sourd);margin-top:26px">Tous vos Mobile Money<br>et votre banque, au même endroit</div>
+    </div>
+    <div class="tel" id="s2-tel" style="top:640px"><div class="ecran">
+      <div class="ile"></div><div class="heure" style="color:var(--noir)">9:41</div>
+      <div class="hero" style="height:560px">
+        <div style="font-size:26px;margin-bottom:26px">Bonjour Awa</div>
+        <div class="plaque"><small>Solde SwimPay</small><div class="montant" id="s2-solde">0<i> F</i></div><small>Vers tous les Mobile Money et banques</small></div>
+      </div>
+      <div class="corps-ecran" style="top:600px">
+        <div class="ligne"><span class="av" style="color:var(--acide)">↙</span><span class="nm">Aya T.<small>Reçu sur Wave</small></span><span class="vl" style="color:var(--acide)">+12 500 F</span></div>
+        <div class="ligne"><span class="av">+</span><span class="nm">Recharge<small>Depuis Orange Money, gratuite</small></span><span class="vl">+20 000 F</span></div>
+        <div class="ligne"><span class="av">YK</span><span class="nm">Yao K.<small>Vers MTN MoMo</small></span><span class="vl">−5 000 F</span></div>
+      </div>
+    </div></div>
+    <div id="s2-puces"></div>
+  </div>
+
+  <!-- 3. envoyer -->
+  <div class="scene" id="s3">
+    <div class="bloc-texte" style="top:120px">
+      <div class="titre" style="font-size:150px">Envoyez<br>partout</div>
+      <div class="sous" style="color:var(--sourd);margin-top:26px">Le nom est vérifié avant l'envoi</div>
+    </div>
+    <div class="tel" id="s3-tel" style="top:640px"><div class="ecran">
+      <div class="ile"></div><div class="heure" style="color:var(--noir)">9:41</div>
+      <div class="hero" style="height:330px">
+        <div class="sur" style="color:rgba(20,20,20,.66);font-size:22px">Envoyer vers</div>
+        <div class="titre" style="font-size:78px;margin-top:10px">MTN MoMo</div>
+        <div style="font-size:26px;margin-top:10px;font-weight:600">05 44 90 12 73</div>
+      </div>
+      <div class="corps-ecran" style="top:370px">
+        <div id="s3-nom" class="verre" style="display:flex;align-items:center;gap:18px;padding:22px 24px;font-size:28px">
+          <span class="coche">✓</span><span><b style="font-weight:600">Aya Koné</b><br><small style="color:var(--sourd);font-size:21px">Nom vérifié auprès de MTN</small></span>
+        </div>
+        <div id="s3-montant" class="montant" style="text-align:center;margin-top:70px;font-size:150px">0<i> F</i></div>
+        <div id="s3-frais" style="text-align:center;color:var(--sourd);font-size:24px;margin-top:14px">Frais : 250 F</div>
+        <div id="s3-btn" class="pilule acide" style="margin-top:120px">Envoyer 25 000 F</div>
+      </div>
+      <div id="s3-ok" style="position:absolute;inset:0;background:var(--grad);display:grid;place-items:center;color:var(--noir);opacity:0">
+        <div style="text-align:center"><div style="width:180px;height:180px;border-radius:99px;background:var(--noir);color:var(--acide);display:grid;place-items:center;font-size:100px;margin:0 auto">✓</div>
+        <div class="titre" style="font-size:110px;margin-top:40px">Envoyé</div><div style="font-size:30px;font-weight:600;margin-top:10px">25 000 F à Aya Koné</div></div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- 4. encaisser -->
+  <div class="scene" id="s4">
+    <div class="bloc-texte" style="top:120px">
+      <div class="titre" style="font-size:150px">Encaissez</div>
+      <div class="sous" style="color:var(--sourd);margin-top:26px">Un QR simple, au standard<br>universel de la BCEAO</div>
+    </div>
+    <div class="tel" id="s4-tel" style="top:640px"><div class="ecran" style="background:var(--noir)">
+      <div class="ile"></div><div class="heure">9:41</div>
+      <div style="position:absolute;left:44px;right:44px;top:140px;background:var(--blanc);color:var(--noir);border-radius:48px;padding:40px;text-align:center">
+        <div style="font-size:24px;color:#555">Boutique Awa</div>
+        <div class="montant" style="font-size:96px;margin-top:6px">12 500<i> F</i></div>
+        <canvas id="s4-qr" width="380" height="380" style="width:380px;height:380px;margin-top:26px"></canvas>
+        <div id="s4-scan" style="position:absolute;left:60px;right:60px;height:6px;border-radius:9px;background:var(--acide);box-shadow:0 0 30px var(--acide)"></div>
+        <div style="font-size:22px;color:#555;margin-top:18px">Scannez avec votre app Mobile Money ou bancaire</div>
+      </div>
+      <div id="s4-ok" class="verre" style="position:absolute;left:44px;right:44px;top:1000px;display:flex;align-items:center;gap:18px;padding:24px;font-size:28px;opacity:0">
+        <span class="coche">✓</span><span><b>12 500 F reçus</b><br><small style="color:var(--sourd);font-size:21px">Payé par Wave · il y a 2 s</small></span>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- 5. factures FNE -->
+  <div class="scene" id="s5">
+    <div class="couche fond-acide"></div>
+    <div class="bloc-texte" style="top:120px;color:var(--noir)">
+      <div class="titre" style="font-size:140px">Vos factures<br>FNE en<br>une minute</div>
+      <div class="sous" style="margin-top:26px;color:rgba(20,20,20,.72)">Certifiées par la DGI,<br>parties avec l'opération</div>
+    </div>
+    <div id="s5-fact" style="position:absolute;left:130px;right:130px;top:900px;background:var(--blanc);color:var(--noir);border-radius:44px;padding:50px;box-shadow:0 50px 100px -30px rgba(20,60,0,.5)">
+      <div style="display:flex;justify-content:space-between;font-size:26px"><b style="font-size:32px">Boutique Awa</b><span style="color:#666">Facture n° 141</span></div>
+      <div id="s5-l1" style="display:flex;justify-content:space-between;font-size:28px;padding:24px 0;border-bottom:2px solid #eee;margin-top:24px"><span>Pagne wax 6 yards</span><b>12 500 F</b></div>
+      <div id="s5-l2" style="display:flex;justify-content:space-between;font-size:28px;padding:24px 0;border-bottom:2px solid #eee"><span>Sac de riz 5 kg × 2</span><b>8 000 F</b></div>
+      <div id="s5-l3" style="display:flex;justify-content:space-between;font-size:36px;padding:24px 0"><b>Total</b><b>20 500 F</b></div>
+      <div id="s5-tampon" style="display:flex;gap:22px;align-items:center;border-top:3px dashed #bbb;padding-top:26px">
+        <canvas id="s5-qr" width="140" height="140" style="width:140px;height:140px"></canvas>
+        <div style="font-size:22px"><b style="font-size:28px">FNE · certifiée DGI</b><br><span style="font-family:ui-monospace,Consolas,monospace">2500736C26000000141</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. la paie -->
+  <div class="scene" id="s6">
+    <div class="bloc-texte" style="top:120px">
+      <div class="titre" style="font-size:140px">Payez vos<br>équipes</div>
+      <div class="sous" style="color:var(--sourd);margin-top:26px">Le fichier de paie, validé une fois.<br>Chacun sur son compte SwimPay</div>
+    </div>
+    <div class="tel" id="s6-tel" style="top:640px"><div class="ecran">
+      <div class="ile"></div><div class="heure" style="color:var(--noir)">9:41</div>
+      <div class="hero" style="height:330px">
+        <div class="sur" style="color:rgba(20,20,20,.66);font-size:22px">Paie de septembre</div>
+        <div class="montant" id="s6-total" style="font-size:96px;margin-top:10px">0<i> F</i></div>
+        <div style="font-size:24px;font-weight:600;margin-top:6px" id="s6-compte">0 / 5 payés</div>
+      </div>
+      <div class="corps-ecran" style="top:360px" id="s6-liste"></div>
+    </div></div>
+  </div>
+
+  <!-- 7. le coffre -->
+  <div class="scene" id="s7">
+    <img id="s7-img" src="../assets/site-coffre.webp" style="position:absolute;left:90px;top:640px;width:900px;height:900px;object-fit:cover;border-radius:60px" alt="">
+    <div class="bloc-texte" style="top:120px">
+      <div class="titre" style="font-size:150px">Mettez<br>de côté</div>
+      <div class="sous" style="color:var(--sourd);margin-top:26px">Verrouillez jusqu'à une date :<br>personne ne peut l'ouvrir avant</div>
+    </div>
+    <div id="s7-plaque" class="verre" style="position:absolute;left:150px;right:150px;top:1590px;padding:30px 36px;display:flex;justify-content:space-between;align-items:center">
+      <div><div style="color:var(--sourd);font-size:24px">Coffre</div><div class="montant" id="s7-m" style="font-size:80px">0<i> F</i></div></div>
+      <div style="text-align:right;font-size:26px"><span style="color:var(--acide);font-weight:700">🔒 Verrouillé</span><br><span style="color:var(--sourd)">jusqu'au 31 décembre</span></div>
+    </div>
+  </div>
+
+  <!-- 8. la tontine -->
+  <div class="scene" id="s8">
+    <div class="couche fond-acide"></div>
+    <div class="bloc-texte" style="top:120px;color:var(--noir)">
+      <div style="display:inline-block;background:var(--noir);color:var(--acide);border-radius:99px;padding:10px 26px;font-size:28px;font-weight:700;letter-spacing:.08em" id="s8-nouveau">NOUVEAU</div>
+      <div class="titre" style="font-size:170px;margin-top:22px">La tontine</div>
+      <div class="sous" style="margin-top:22px;color:rgba(20,20,20,.75)" id="s8-s">Le tirage en direct, devant tous</div>
+    </div>
+    <div id="s8-cercle" style="position:absolute;left:0;right:0;top:720px;height:900px"></div>
+    <div class="tel" id="s8-tel" style="top:640px"><div class="ecran">
+      <div class="ile"></div><div class="heure" style="color:var(--noir)">9:41</div>
+      <div class="hero" style="height:560px">
+        <div class="sur" style="color:rgba(20,20,20,.66);font-size:22px">Tour 3</div>
+        <div class="titre" style="font-size:112px;margin-top:6px">Tu as gagné</div>
+        <div class="plaque" style="margin-top:22px"><small>Ta cagnotte</small><div class="montant" id="s8-cag">0<i> F</i></div></div>
+      </div>
+      <div class="corps-ecran" style="top:600px">
+        <div class="ligne"><span class="nm">Tu récupères maintenant</span><span class="vl" style="color:var(--acide);font-size:38px">55 000 F</span></div>
+        <div class="ligne"><span class="nm" style="color:var(--sourd)">Gardé pour tes 7 mises</span><span class="vl">70 000 F</span></div>
+        <div style="font-size:24px;color:var(--sourd);margin-top:26px;line-height:1.35">À chaque mise payée, on t'en rend autant.</div>
+        <div class="pilule acide" style="margin-top:34px">Mettre 55 000 F sur mon compte</div>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- 9. la securite -->
+  <div class="scene" id="s9">
+    <img id="s9-img" src="../assets/site-cadenas.webp" style="position:absolute;left:250px;top:600px;width:580px;height:580px;object-fit:cover;border-radius:56px" alt="">
+    <div class="bloc-texte" style="top:120px">
+      <div class="titre" style="font-size:150px">Votre argent<br>en sécurité</div>
+    </div>
+    <div class="bloc-texte" style="top:1250px;display:grid;gap:24px" id="s9-liste">
+      <div class="verre s9-i" style="padding:30px 36px;font-size:34px"><b style="font-weight:600">Biométrie</b><br><span style="color:var(--sourd);font-size:28px">Aucun montant ne part sans vous</span></div>
+      <div class="verre s9-i" style="padding:30px 36px;font-size:34px"><b style="font-weight:600">Chiffrement</b><br><span style="color:var(--sourd);font-size:28px">De votre téléphone à nos serveurs</span></div>
+      <div class="verre s9-i" style="padding:30px 36px;font-size:34px"><b style="font-weight:600">Fonds cantonnés</b><br><span style="color:var(--sourd);font-size:28px">Chez un émetteur agréé, adossés à 100 %</span></div>
+    </div>
+  </div>
+
+  <!-- 10. la fin -->
+  <div class="scene" id="s10">
+    <div class="couche fond-acide"></div>
+    <div id="s10-logo" style="position:absolute;left:0;right:0;top:640px;text-align:center;color:var(--noir)">
+      <img src="../assets/logo-symbole-noir.png" style="width:220px;height:auto" alt="">
+      <div class="titre" style="font-size:200px;margin-top:30px;text-transform:none;letter-spacing:-0.03em">SwimPay</div>
+      <div class="sous" style="margin-top:30px;font-weight:600">Bien plus qu'une application</div>
+    </div>
+    <div id="s10-url" style="position:absolute;left:0;right:0;top:1560px;text-align:center;color:var(--noir)">
+      <div style="display:inline-block;background:var(--noir);color:var(--blanc);border-radius:99px;padding:26px 50px;font-size:36px;font-weight:600">Installez l'application</div>
+      <div style="font-size:28px;margin-top:30px;color:rgba(20,20,20,.7)">swimpay.johaneoyaraht.workers.dev</div>
+    </div>
+  </div>
+
+  <div class="grain"></div>
+</div>
+
+<script>
+const DUREE = 40, FPS = 30;
+const SCENES = [
+  ["s1", 0.0, 3.8], ["s2", 3.6, 8.4], ["s3", 8.2, 12.4], ["s4", 12.2, 16.4], ["s5", 16.2, 20.4],
+  ["s6", 20.2, 24.4], ["s7", 24.2, 28.2], ["s8", 28.0, 34.2], ["s9", 34.0, 37.2], ["s10", 37.0, 40.0],
+];
+const $ = (id) => document.getElementById(id);
+const clamp = (x) => Math.max(0, Math.min(1, x));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const sortie = (x) => 1 - Math.pow(1 - x, 3);
+const vif = (x) => 1 - Math.pow(1 - x, 5);
+const doux = (x) => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const rebond = (x) => { const c = 1.70158 + 1; return 1 + c * Math.pow(x - 1, 3) + 1.70158 * Math.pow(x - 1, 2); };
+const F = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+const montant = (n) => F(n) + "<i> F</i>";
+function entre(el, p, dy = 80, s = .96) {       // apparition : monte, grandit, devient opaque
+  const e = vif(p);
+  el.style.opacity = e; el.style.transform = "translateY(" + (1 - e) * dy + "px) scale(" + (s + (1 - s) * e) + ")";
+}
+
+/* QR de maquette, deterministe (il ne se scanne pas) */
+function qr(canvas, graine, fond, encre) {
+  const ctx = canvas.getContext("2d"), n = 29, w = canvas.width, c = w / n;
+  ctx.fillStyle = fond; ctx.fillRect(0, 0, w, w); ctx.fillStyle = encre;
+  let x = graine;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    x = (x * 1103515245 + 12345) & 0x7fffffff;
+    const coin = (i < 8 && j < 8) || (i < 8 && j > n - 9) || (i > n - 9 && j < 8);
+    if (!coin && x % 100 < 48) ctx.fillRect(j * c, i * c, c + .5, c + .5);
+  }
+  [[0, 0], [n - 7, 0], [0, n - 7]].forEach(([a, b]) => {
+    ctx.fillRect(a * c, b * c, 7 * c, 7 * c); ctx.fillStyle = fond; ctx.fillRect((a + 1) * c, (b + 1) * c, 5 * c, 5 * c);
+    ctx.fillStyle = encre; ctx.fillRect((a + 2) * c, (b + 2) * c, 3 * c, 3 * c);
+  });
+}
+qr($("s4-qr"), 7, "#FFFFFF", "#141414"); qr($("s5-qr"), 3, "#FFFFFF", "#141414");
+
+/* les puces des reseaux autour du telephone */
+const RESEAUX = [["Orange Money", "#FF7900", 70, 700], ["MTN MoMo", "#FFCB05", 640, 820], ["Wave", "#1DC4FF", 40, 1320], ["Moov Money", "#0066B3", 660, 1500], ["Banque", "#FFFFFF", 110, 1740]];
+$("s2-puces").innerHTML = RESEAUX.map(([n, c], i) => "<div class='puce-reseau' id='s2-p" + i + "'><i style='background:" + c + "'></i>" + n + "</div>").join("");
+
+/* la paie */
+const SALARIES = [["Mariam D.", "Caissière", 185000], ["Ibrahim S.", "Livreur", 150000], ["Adjoua B.", "Vendeuse", 170000], ["Moussa C.", "Magasinier", 160000], ["Fatou O.", "Comptable", 240000]];
+$("s6-liste").innerHTML = SALARIES.map(([n, r, m], i) => "<div class='ligne' id='s6-l" + i + "'><span class='av'>" + n.split(" ").map((x) => x[0]).join("") + "</span><span class='nm'>" + n + "<small>" + r + "</small></span><span class='vl'>" + F(m) + " F</span><span class='coche' id='s6-c" + i + "' style='margin-left:14px'>✓</span></div>").join("");
+
+/* la tontine : les 10 membres en cercle */
+const MEMBRES = ["AK", "YK", "MD", "IS", "VOUS", "AB", "MC", "FO", "SA", "AY"];
+$("s8-cercle").innerHTML = MEMBRES.map((m, i) => "<div id='s8-m" + i + "' style='position:absolute;width:150px;height:150px;border-radius:99px;display:grid;place-items:center;font-weight:800;font-size:" + (m === "VOUS" ? 30 : 40) + "px;background:#141414;color:#fff;border:6px solid rgba(20,20,20,.25)'>" + m + "</div>").join("");
+
+function seek(t) {
+  // chaque scene : fondu d'entree et de sortie de 0,25 s, et un leger glissement
+  for (const [id, a, b] of SCENES) {
+    const el = $(id), on = t >= a && t < b;
+    if (!on) { el.style.opacity = 0; el.style.visibility = "hidden"; continue; }
+    el.style.visibility = "visible";
+    const pin = seg(t, a, a + .25), pout = 1 - seg(t, b - .25, b);
+    el.style.opacity = Math.min(pin, pout);
+    el.style.transform = "translateY(" + (1 - sortie(pin)) * 40 + "px)";
+  }
+  // 1. accroche
+  { const l = t;
+    const ph = $("s1-photo"); const e = vif(seg(l, 0, .9)); ph.style.transform = "translateY(" + (1 - e) * -200 + "px) scale(" + (1.08 - .08 * e) + ")";
+    ["s1-m1", "s1-m2", "s1-m3"].forEach((id, i) => { const p = seg(l, .5 + i * .38, .9 + i * .38); const el = $(id); const e2 = rebond(p);
+      el.style.opacity = clamp(p * 3); el.style.transform = "translateX(" + (1 - e2) * -120 + "px)"; }); }
+  // 2. un seul compte
+  { const l = t - 3.6;
+    entre($("s2-tel"), seg(l, .1, .9), 260, .9);
+    entre($("s2-sur"), seg(l, .2, .7)); entre($("s2-t"), seg(l, .3, .9)); entre($("s2-s"), seg(l, .5, 1.1));
+    $("s2-solde").innerHTML = montant(148350 * sortie(seg(l, .8, 2.2)));
+    RESEAUX.forEach(([, , x, y], i) => { const p = vif(seg(l, 1.3 + i * .22, 1.8 + i * .22)); const el = $("s2-p" + i);
+      const dx = x < 400 ? -300 : 300; el.style.left = (x + (1 - p) * dx) + "px"; el.style.top = y + "px"; el.style.opacity = p;
+      const aspire = sortie(seg(l, 3.6, 4.5)); if (aspire > 0) { el.style.left = (x + (540 - x - 120) * aspire) + "px"; el.style.top = (y + (1150 - y) * aspire) + "px"; el.style.opacity = p * (1 - aspire); el.style.transform = "scale(" + (1 - .6 * aspire) + ")"; } else el.style.transform = "none"; }); }
+  // 3. envoyer
+  { const l = t - 8.2;
+    entre($("s3-tel"), seg(l, .05, .7), 200, .92);
+    entre($("s3-nom"), seg(l, .7, 1.1), 30);
+    const saisie = seg(l, 1.1, 2.1); const val = [0, 2, 25, 250, 2500, 25000][Math.min(5, Math.floor(saisie * 6))];
+    $("s3-montant").innerHTML = montant(val); $("s3-montant").style.color = val ? "#fff" : "#434343";
+    $("s3-frais").style.opacity = seg(l, 2.0, 2.3);
+    const appui = seg(l, 2.5, 2.7); $("s3-btn").style.transform = "scale(" + (1 - .04 * Math.sin(appui * Math.PI)) + ")";
+    const ok = seg(l, 2.75, 2.9); $("s3-ok").style.opacity = ok; $("s3-ok").style.transform = "scale(" + (1.06 - .06 * vif(ok)) + ")"; }
+  // 4. encaisser
+  { const l = t - 12.2;
+    entre($("s4-tel"), seg(l, .05, .7), 200, .92);
+    const sc = seg(l, .9, 2.4); $("s4-scan").style.top = (250 + 380 * (0.5 - 0.5 * Math.cos(sc * Math.PI * 2))) + "px"; $("s4-scan").style.opacity = sc > 0 && sc < 1 ? 1 : 0;
+    entre($("s4-ok"), seg(l, 2.5, 2.9), 40); }
+  // 5. FNE
+  { const l = t - 16.2;
+    const f = $("s5-fact"); const p = vif(seg(l, .2, .9)); f.style.opacity = p; f.style.transform = "translateY(" + (1 - p) * 500 + "px) rotate(" + (1 - p) * 6 + "deg)";
+    ["s5-l1", "s5-l2", "s5-l3"].forEach((id, i) => entre($(id), seg(l, .9 + i * .25, 1.3 + i * .25), 20, 1));
+    const tp = seg(l, 1.9, 2.3); const el = $("s5-tampon"); el.style.opacity = tp; el.style.transform = "scale(" + (1.25 - .25 * rebond(tp)) + ")"; }
+  // 6. la paie
+  { const l = t - 20.2;
+    entre($("s6-tel"), seg(l, .05, .7), 200, .92);
+    let payes = 0, total = 0;
+    SALARIES.forEach(([, , m], i) => { entre($("s6-l" + i), seg(l, .6 + i * .12, 1 + i * .12), 30, 1);
+      const c = seg(l, 1.5 + i * .35, 1.75 + i * .35); const co = $("s6-c" + i); co.style.opacity = c; co.style.transform = "scale(" + (.4 + .6 * rebond(c)) + ")";
+      if (c >= 1) { payes++; total += m; } });
+    $("s6-total").innerHTML = montant(total); $("s6-compte").textContent = payes + " / 5 payés"; }
+  // 7. le coffre
+  { const l = t - 24.2;
+    const im = $("s7-img"); const p = vif(seg(l, .05, .9)); im.style.opacity = p; im.style.transform = "scale(" + (1.12 - .12 * p) + ") rotate(" + (1 - p) * -3 + "deg)";
+    entre($("s7-plaque"), seg(l, .9, 1.4), 60);
+    $("s7-m").innerHTML = montant(250000 * sortie(seg(l, 1.2, 2.6))); }
+  // 8. la tontine : le cercle, le tirage, puis le gain
+  { const l = t - 28.0;
+    entre($("s8-nouveau"), seg(l, .1, .5), 20);
+    const cercle = seg(l, 0, 3.0) < 1; $("s8-cercle").style.opacity = 1 - seg(l, 2.9, 3.2);
+    MEMBRES.forEach((m, i) => { const el = $("s8-m" + i); const ang = -Math.PI / 2 + i * 2 * Math.PI / 10 + seg(l, 0, 3) * .6;
+      const R = 330 * vif(seg(l, .2 + i * .05, .8 + i * .05)); el.style.left = (540 - 75 + Math.cos(ang) * R) + "px"; el.style.top = (450 - 75 + Math.sin(ang) * R) + "px";
+      // le tirage : un anneau acide tourne, ralentit et s'arrete sur « VOUS » (i = 4)
+      const tir = seg(l, 1.0, 2.6), pos = Math.floor(doux(tir) * 20 + 4) % 10;
+      const allume = tir > 0 && pos === i; el.style.background = allume ? "#141414" : "#141414"; el.style.borderColor = allume ? "#FFFFFF" : "rgba(20,20,20,.25)";
+      el.style.transform = "scale(" + (allume ? 1.18 : 1) + ")"; el.style.color = (tir >= 1 && i === 4) ? "#A2FF01" : "#fff"; });
+    $("s8-s").textContent = l < 3 ? "Le tirage en direct, devant tous" : l < 4.6 ? "Ton gain, tout de suite" : "Personne ne part avec l'argent";
+    $("s8-s").style.fontWeight = l < 4.6 ? 500 : 700;
+    const tel = seg(l, 3.0, 3.6); entre($("s8-tel"), tel, 300, .9); $("s8-tel").style.visibility = tel > 0 ? "visible" : "hidden";
+    $("s8-cag").innerHTML = montant(100000 * sortie(seg(l, 3.4, 4.3)));
+  }
+  // 9. la securite
+  { const l = t - 34.0;
+    const im = $("s9-img"), p = vif(seg(l, .05, .9)); im.style.opacity = p; im.style.transform = "scale(" + (1.1 - .1 * p) + ")";
+    document.querySelectorAll(".s9-i").forEach((el, i) => entre(el, seg(l, .9 + i * .25, 1.3 + i * .25), 40)); }
+  // 10. la fin
+  { const l = t - 37.0;
+    const lo = $("s10-logo"); const p = rebond(seg(l, .1, .8)); lo.style.opacity = clamp(seg(l, .1, .4)); lo.style.transform = "scale(" + (.8 + .2 * p) + ")";
+    entre($("s10-url"), seg(l, .9, 1.4), 40); }
+}
+window.seek = seek; window.DUREE = DUREE; window.FPS = FPS;
+window.pret = document.fonts.ready.then(() => Promise.all([...document.images].map((i) => i.complete ? 1 : new Promise((r) => { i.onload = i.onerror = r; })))).then(() => { seek(0); return true; });
+/* hors export : lecture en boucle pour regarder */
+if (!location.search.includes("export")) { const t0 = performance.now(); const boucle = () => { seek(((performance.now() - t0) / 1000) % DUREE); requestAnimationFrame(boucle); }; window.pret.then(boucle); }
+</script>
+</body>
+</html>

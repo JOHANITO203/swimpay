@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SwimPay en clair</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --encre:#141414; --encre-doux:#434343; --gris:#6f7268;
+    --trait:#dedfd6; --papier:#f6f6f1; --carte:#ffffff;
+    --acide:#a2ff01; --acide-fonce:#4f7d00; --ok:#2f6d3c;
+    --ombre:0 1px 2px rgba(20,20,20,.05), 0 10px 30px -14px rgba(20,20,20,.16);
+    --ombre-forte:0 2px 6px rgba(20,20,20,.08), 0 22px 50px -20px rgba(20,20,20,.28);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --encre:#f2f3ee; --encre-doux:#b9bbb1; --gris:#8a8e82;
+      --trait:#31332c; --papier:#101109; --carte:#1a1b16;
+      --acide:#a2ff01; --acide-fonce:#c8ff6b; --ok:#8fdc9d;
+      --ombre:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+      --ombre-forte:0 2px 6px rgba(0,0,0,.5), 0 22px 50px -20px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --encre:#f2f3ee; --encre-doux:#b9bbb1; --gris:#8a8e82;
+    --trait:#31332c; --papier:#101109; --carte:#1a1b16;
+    --acide:#a2ff01; --acide-fonce:#c8ff6b; --ok:#8fdc9d;
+    --ombre:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7);
+    --ombre-forte:0 2px 6px rgba(0,0,0,.5), 0 22px 50px -20px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--papier); color:var(--encre); font-family:"Public Sans", ui-sans-serif, system-ui, sans-serif; font-size:17px; line-height:1.62; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:860px; margin:0 auto; padding:0 22px; }
+
+  .eyebrow { font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:12.5px; letter-spacing:.02em; color:var(--gris); margin:0; }
+  h1 { font-family:"Archivo", sans-serif; font-weight:700; font-size:clamp(42px, 8vw, 72px); line-height:1.0; letter-spacing:-.03em; margin:18px 0 0; text-wrap:balance; }
+  h2 { font-family:"Archivo", sans-serif; font-weight:600; font-size:clamp(27px, 5vw, 40px); line-height:1.05; letter-spacing:-.022em; margin:0 0 18px; text-wrap:balance; }
+  h3 { font-family:"Archivo", sans-serif; font-weight:600; font-size:21px; line-height:1.2; letter-spacing:-.012em; margin:0 0 8px; }
+  p { max-width:64ch; }
+
+  .hero { padding:64px 0 24px; }
+  .hero .chapeau { font-size:clamp(19px, 3vw, 23px); line-height:1.5; color:var(--encre-doux); max-width:48ch; margin:22px 0 0; }
+  .hero .chapeau b { color:var(--encre); font-weight:700; }
+  .heroart { margin:40px 0 0; background:var(--carte); border:1px solid var(--trait); border-radius:16px; padding:28px 16px 14px; box-shadow:var(--ombre-forte); overflow-x:auto; }
+  .heroart svg { display:block; margin:0 auto; max-width:100%; height:auto; }
+  .cap { font-family:"IBM Plex Mono", monospace; font-size:12px; color:var(--gris); text-align:center; max-width:60ch; margin:14px auto 0; line-height:1.5; }
+
+  section { padding:52px 0; border-top:1px solid var(--trait); }
+  .marqueur { display:flex; align-items:center; gap:12px; margin:0 0 16px; }
+  .marqueur .n { font-family:"IBM Plex Mono", monospace; font-size:13px; font-weight:500; color:#141414; background:var(--acide); width:30px; height:30px; border-radius:8px; display:grid; place-items:center; }
+  .marqueur .lab { font-family:"IBM Plex Mono", monospace; font-size:12.5px; color:var(--gris); letter-spacing:.02em; }
+  .lead { font-size:20px; color:var(--encre-doux); max-width:60ch; margin:0 0 8px; }
+
+  .duo { display:grid; grid-template-columns:repeat(auto-fit, minmax(258px,1fr)); gap:16px; margin-top:26px; }
+  .quatre { display:grid; grid-template-columns:repeat(auto-fit, minmax(188px,1fr)); gap:14px; margin-top:24px; }
+  .quatre .carte { padding:20px; }
+  .quatre .carte h3 { font-size:17px; }
+  .quatre .carte p { font-size:14.5px; }
+  .quatre .carte .ico { font-size:24px; margin-bottom:10px; }
+  .carte { background:var(--carte); border:1px solid var(--trait); border-radius:14px; padding:24px; box-shadow:var(--ombre); }
+  .carte .ico { font-size:26px; line-height:1; margin-bottom:14px; display:block; }
+  .carte p { font-size:16px; color:var(--encre-doux); margin:0; }
+
+  /* Glossaire */
+  .lexdef { display:grid; grid-template-columns:repeat(auto-fit, minmax(320px,1fr)); gap:18px 32px; margin:24px 0 0; }
+  .lexdef .item { border-left:3px solid var(--acide); padding-left:16px; }
+  .lexdef dt { font-family:"Archivo", sans-serif; font-weight:700; font-size:17px; color:var(--encre); margin-bottom:3px; }
+  .lexdef dd { margin:0; font-size:15.5px; color:var(--encre-doux); line-height:1.5; }
+
+  /* Profils */
+  .profil { display:flex; flex-wrap:wrap; gap:30px; align-items:center; margin-top:34px; padding-top:34px; border-top:1px dashed var(--trait); }
+  .profil:first-of-type { border-top:0; padding-top:0; }
+  .profil-txt { flex:1 1 330px; }
+  .badge { display:inline-block; font-family:"IBM Plex Mono", monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--acide-fonce); border:1px solid color-mix(in srgb, var(--acide-fonce) 40%, transparent); border-radius:20px; padding:3px 10px; margin-bottom:12px; }
+  .profil-txt p { font-size:16.5px; color:var(--encre-doux); margin:0; }
+
+  /* Téléphone */
+  .tel { flex:0 0 250px; width:250px; border:2px solid var(--trait); border-radius:26px; background:var(--papier); padding:12px; box-shadow:var(--ombre); }
+  .tel .barre { display:flex; align-items:center; justify-content:space-between; padding:4px 8px 12px; }
+  .tel .barre .qui { font-family:"Archivo", sans-serif; font-weight:700; font-size:13px; }
+  .tel .barre .app { font-family:"IBM Plex Mono", monospace; font-size:10px; color:var(--gris); }
+  .tel .grille { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .tel .action { background:var(--carte); border:1px solid var(--trait); border-radius:14px; padding:14px 8px; text-align:center; }
+  .tel .action .i { font-size:22px; display:block; margin-bottom:6px; line-height:1; }
+  .tel .action .l { font-size:12.5px; font-weight:700; line-height:1.15; display:block; }
+  .tel .action .en { font-size:10px; color:var(--gris); font-family:"IBM Plex Mono", monospace; display:block; margin-top:3px; }
+
+  .chiffres { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:16px; margin-top:26px; }
+  .gros { background:var(--carte); border:1px solid var(--trait); border-radius:14px; padding:22px; box-shadow:var(--ombre); }
+  .gros .qui { font-family:"IBM Plex Mono", monospace; font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--gris); margin-bottom:8px; }
+  .gros .num { font-family:"Archivo", sans-serif; font-weight:700; font-size:34px; letter-spacing:-.025em; line-height:1; color:var(--encre); }
+  .gros .num .u { font-size:16px; color:var(--gris); font-weight:600; letter-spacing:0; }
+  .gros .txt { font-size:14.5px; color:var(--encre-doux); margin-top:8px; }
+
+  .tarifs { margin-top:22px; border:1px solid var(--trait); border-radius:12px; overflow:hidden; box-shadow:var(--ombre); }
+  .tarifs .r { display:flex; justify-content:space-between; gap:16px; padding:13px 18px; border-bottom:1px solid var(--trait); background:var(--carte); font-size:16px; }
+  .tarifs .r:last-child { border-bottom:0; }
+  .tarifs .op { color:var(--encre-doux); }
+  .tarifs .px { font-family:"Archivo", sans-serif; font-weight:700; color:var(--encre); white-space:nowrap; }
+  .tarifs .px.free { color:var(--acide-fonce); }
+  .tarifs .r.total { background:color-mix(in srgb, var(--acide) 14%, var(--carte)); }
+  .tarifs .r.total .op, .tarifs .r.total .px { font-family:"Archivo", sans-serif; font-weight:700; color:var(--encre); }
+  .ex { margin-top:20px; }
+  .ex-h { font-family:"Archivo", sans-serif; font-weight:700; font-size:16.5px; margin:0 0 8px; }
+  .ex-sub { font-size:14.5px; color:var(--encre-doux); margin:10px 0 0; max-width:62ch; }
+  .ex .op .src { color:var(--gris); font-family:"IBM Plex Mono", monospace; font-size:12px; }
+  .sous-titre { font-family:"IBM Plex Mono", monospace; font-size:12px; letter-spacing:.05em; text-transform:uppercase; color:var(--gris); margin:32px 0 0; }
+
+  .note { border-left:4px solid var(--acide); background:var(--carte); padding:18px 22px; border-radius:0 12px 12px 0; margin:26px 0 0; box-shadow:var(--ombre); font-size:16.5px; }
+  .note b { font-weight:700; }
+  .note .titre { font-family:"Archivo", sans-serif; font-weight:700; display:block; margin-bottom:4px; font-size:17px; }
+
+  .statut { list-style:none; padding:0; margin:24px 0 0; display:grid; gap:11px; }
+  .statut li { display:flex; gap:12px; align-items:baseline; font-size:16.5px; }
+  .pastille { flex:none; width:11px; height:11px; border-radius:50%; margin-top:6px; }
+  .pastille.fait { background:var(--ok); } .pastille.encours { background:var(--acide); } .pastille.avenir { background:var(--gris); }
+  .statut b { font-weight:700; } .statut small { color:var(--gris); }
+
+  footer { padding:46px 0 80px; border-top:1px solid var(--trait); }
+  footer .marque { font-family:"Archivo", sans-serif; font-weight:700; font-size:22px; letter-spacing:-.02em; }
+  footer .dot { color:var(--acide-fonce); }
+  footer p { font-family:"IBM Plex Mono", monospace; font-size:12.5px; color:var(--gris); margin:10px 0 0; }
+</style>
+
+
+<style>
+  @page { size: A4; margin: 14mm 12mm; }
+  body { background: #ffffff; }
+  .wrap { max-width: none; padding: 0 4mm; }
+  section, .fiche, .panneau, .carte, .gros, .tuile, .ex, .tarifs, .heroart { break-inside: avoid; page-break-inside: avoid; }
+  h1, h2 { break-after: avoid; page-break-after: avoid; }
+  section { padding: 26px 0; }
+  .hero { padding: 8px 0 18px; }
+  a { color: inherit; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HERO -->
+  <header class="hero">
+    <p class="eyebrow">SwimPay · Côte d'Ivoire</p>
+    <h1>L'argent en ordre, pour tous</h1>
+    <p class="chapeau">En Côte d'Ivoire, l'argent vit sur des réseaux séparés qui ne se parlent pas. Envoyer, recevoir, encaisser, payer des salaires, tout est compliqué. Et la loi impose désormais de déclarer chaque vente. <b>SwimPay remet de l'ordre, pour chacun : le particulier, le commerçant et l'entreprise.</b></p>
+
+    <div class="heroart">
+      <svg viewBox="0 0 760 316" role="img" aria-label="Trois profils, particulier, commerçant et PME, utilisent SwimPay, qui s'appuie sur les réseaux de paiement, la banque et les impôts">
+        <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+        <!-- ceux qui l'utilisent -->
+        <g font-family="Archivo, sans-serif" font-weight="600" font-size="15" fill="var(--encre)">
+          <g fill="none" stroke="currentColor" color="var(--encre-doux)" stroke-width="1.7">
+            <rect x="70" y="20" width="168" height="48" rx="11"/>
+            <rect x="296" y="20" width="168" height="48" rx="11"/>
+            <rect x="522" y="20" width="168" height="48" rx="11"/>
+          </g>
+          <text x="154" y="49" text-anchor="middle">Le particulier</text>
+          <text x="380" y="49" text-anchor="middle">Le commerçant</text>
+          <text x="606" y="49" text-anchor="middle">La PME</text>
+        </g>
+        <!-- connecteurs vers SwimPay -->
+        <g fill="none" stroke="currentColor" color="var(--encre-doux)" stroke-width="1.6">
+          <path d="M154 68 L 360 128" marker-end="url(#a)"/>
+          <path d="M380 68 L 380 128" marker-end="url(#a)"/>
+          <path d="M606 68 L 400 128" marker-end="url(#a)"/>
+        </g>
+        <!-- SwimPay -->
+        <rect x="300" y="130" width="160" height="52" rx="13" fill="var(--acide)"/>
+        <text x="380" y="163" text-anchor="middle" font-family="Archivo, sans-serif" font-weight="700" font-size="22" fill="#141414">SwimPay</text>
+        <!-- connecteurs vers l'infra -->
+        <g fill="none" stroke="var(--acide-fonce)" color="var(--acide-fonce)" stroke-width="1.5">
+          <path d="M340 182 L 74 244" marker-end="url(#a)"/>
+          <path d="M356 182 L 200 244" marker-end="url(#a)"/>
+          <path d="M372 182 L 325 244" marker-end="url(#a)"/>
+          <path d="M388 182 L 435 244" marker-end="url(#a)"/>
+          <path d="M404 182 L 560 244" marker-end="url(#a)"/>
+          <path d="M420 182 L 686 244" marker-end="url(#a)"/>
+        </g>
+        <!-- infra -->
+        <g font-family="IBM Plex Mono, monospace" font-size="12.5" fill="var(--encre)">
+          <g fill="none" stroke="currentColor" color="var(--encre-doux)" stroke-width="1.5">
+            <rect x="24" y="246" width="100" height="38" rx="9"/><rect x="150" y="246" width="100" height="38" rx="9"/>
+            <rect x="276" y="246" width="100" height="38" rx="9"/><rect x="402" y="246" width="100" height="38" rx="9"/>
+            <rect x="528" y="246" width="100" height="38" rx="9"/><rect x="636" y="246" width="100" height="38" rx="9"/>
+          </g>
+          <text x="74" y="269" text-anchor="middle">Wave</text><text x="200" y="269" text-anchor="middle">Orange</text>
+          <text x="326" y="269" text-anchor="middle">MTN</text><text x="452" y="269" text-anchor="middle">Moov</text>
+          <text x="578" y="269" text-anchor="middle">Banque</text><text x="686" y="269" text-anchor="middle">Impôts</text>
+        </g>
+      </svg>
+      <p class="cap">En haut, ceux qui utilisent SwimPay. Au milieu, l'application. En bas, les réseaux de paiement, la banque et les impôts, sur lesquels elle s'appuie.</p>
+    </div>
+  </header>
+
+  <!-- VOCABULAIRE -->
+  <section>
+    <div class="marqueur"><span class="lab">📖 Pour comprendre le reste</span></div>
+    <h2>Les mots de ce document</h2>
+    <dl class="lexdef">
+      <div class="item"><dt>Mobile money</dt><dd>Wave, Orange Money, MTN, Moov. Un compte d'argent sur téléphone, sans banque. La façon dont la plupart des Ivoiriens paient et reçoivent aujourd'hui.</dd></div>
+      <div class="item"><dt>La facture normalisée</dt><dd>La facture électronique validée par les impôts, avec un numéro officiel et un QR code. Obligatoire pour toute entreprise depuis décembre 2025.</dd></div>
+      <div class="item"><dt>Un partenaire licencié</dt><dd>Une société autorisée par la Banque Centrale à détenir et déplacer l'argent. SwimPay s'appuie sur elle pour lancer vite, sans demander tout de suite sa propre licence.</dd></div>
+      <div class="item"><dt>Les marchés publics</dt><dd>Les contrats de l'État et des mairies. Une entreprise sans facture normalisée en est exclue, ce qui la coupe d'une grosse part de l'économie.</dd></div>
+    </dl>
+  </section>
+
+  <!-- 1. TROIS PROFILS -->
+  <section>
+    <div class="marqueur"><span class="n">1</span><span class="lab">Le produit</span></div>
+    <h2>Trois profils, une application</h2>
+    <p class="lead">SwimPay agit à trois niveaux. Voici ce que chacun fait dans l'application.</p>
+
+    <!-- Particulier -->
+    <div class="profil">
+      <div class="profil-txt">
+        <span class="badge">Le particulier</span>
+        <h3>Envoyer et recevoir, sans se soucier du réseau</h3>
+        <p>Son argent est sur Orange, son frère est sur Wave. Aujourd'hui, lui envoyer coûte du temps et des frais. Dans SwimPay, elle envoie vers n'importe quel numéro, sur n'importe quel réseau, en quelques secondes.</p>
+      </div>
+      <div class="tel">
+        <div class="barre"><span class="qui">Léa</span><span class="app">SwimPay</span></div>
+        <div class="grille">
+          <div class="action"><span class="i">💸</span><span class="l">Envoyer</span><span class="en">Send</span></div>
+          <div class="action"><span class="i">📥</span><span class="l">Recevoir</span><span class="en">Receive</span></div>
+          <div class="action"><span class="i">🏪</span><span class="l">Payer en boutique</span><span class="en">Pay by QR</span></div>
+          <div class="action"><span class="i">💳</span><span class="l">Mon solde</span><span class="en">My balance</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Commerçant -->
+    <div class="profil">
+      <div class="profil-txt">
+        <span class="badge">Le commerçant</span>
+        <h3>Encaisser partout, facturer sans y penser</h3>
+        <p>Il encaisse sur quatre réseaux sans jamais voir son total, et la loi l'oblige à facturer. SwimPay lui donne un seul point d'encaissement, la facture officielle automatique à chaque vente, et ses ventes en un coup d'œil.</p>
+      </div>
+      <div class="tel">
+        <div class="barre"><span class="qui">Boutique Awa</span><span class="app">SwimPay</span></div>
+        <div class="grille">
+          <div class="action"><span class="i">📲</span><span class="l">Être payé</span><span class="en">Get paid · QR</span></div>
+          <div class="action"><span class="i">🔗</span><span class="l">Lien de paiement</span><span class="en">Payment link</span></div>
+          <div class="action"><span class="i">🧾</span><span class="l">Facture auto</span><span class="en">Auto invoice</span></div>
+          <div class="action"><span class="i">📊</span><span class="l">Mes ventes</span><span class="en">Sales</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PME -->
+    <div class="profil">
+      <div class="profil-txt">
+        <span class="badge">La PME</span>
+        <h3>Payer les salaires en un clic, garder la conformité</h3>
+        <p>Verser quarante salaires prend des heures et coûte cher. SwimPay paie tous les salaires en une fois, règle les fournisseurs, facture les clients, et montre toute la trésorerie sur un écran.</p>
+      </div>
+      <div class="tel">
+        <div class="barre"><span class="qui">Ivoire BTP</span><span class="app">SwimPay</span></div>
+        <div class="grille">
+          <div class="action"><span class="i">👥</span><span class="l">Payer les salaires</span><span class="en">Payroll</span></div>
+          <div class="action"><span class="i">🚚</span><span class="l">Payer fournisseurs</span><span class="en">Pay suppliers</span></div>
+          <div class="action"><span class="i">🧾</span><span class="l">Facturer</span><span class="en">Invoicing</span></div>
+          <div class="action"><span class="i">🏦</span><span class="l">Ma trésorerie</span><span class="en">Cash view</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. LE PROBLÈME / LA PROMESSE -->
+  <section>
+    <div class="marqueur"><span class="n">2</span><span class="lab">Ce que ça résout</span></div>
+    <h2>Les problèmes, et notre réponse</h2>
+    <div class="duo">
+      <div class="carte"><span class="ico">🧩</span><h3>L'argent est éparpillé</h3><p>Quatre réseaux, plus les espèces et la banque, qui ne se parlent pas. <b>SwimPay les réunit</b> en un seul point pour envoyer, recevoir et encaisser.</p></div>
+      <div class="carte"><span class="ico">📜</span><h3>La loi impose la facture</h3><p>Chaque entreprise doit déclarer ses ventes aux impôts. <b>SwimPay émet la facture officielle automatiquement</b>, sans effort et sans erreur.</p></div>
+      <div class="carte"><span class="ico">⏳</span><h3>La paie et les paiements sont lourds</h3><p>Payer des salaires ou des fournisseurs prend du temps et coûte cher. <b>SwimPay le fait en un clic</b>, sur tous les réseaux à la fois.</p></div>
+      <div class="carte"><span class="ico">🔍</span><h3>Personne ne voit clair</h3><p>Un commerçant ne sait pas ce qu'il gagne, une PME ne voit pas sa trésorerie. <b>SwimPay montre tout sur un tableau de bord</b>, en direct.</p></div>
+    </div>
+  </section>
+
+  <!-- 3. LE MOMENT -->
+  <section>
+    <div class="marqueur"><span class="n">3</span><span class="lab">Le moment</span></div>
+    <h2>Le bon moment, exactement</h2>
+    <p class="lead">Trois faits se rejoignent en même temps.</p>
+    <div class="duo">
+      <div class="carte"><span class="ico">⚖️</span><h3>La loi force l'adoption</h3><p>Chaque entreprise doit facturer aux impôts depuis décembre 2025. Ce n'est plus un choix, c'est une obligation avec des sanctions réelles.</p></div>
+      <div class="carte"><span class="ico">📈</span><h3>Le marché est immense</h3><p>Près de 2,8 milliards de paiements mobiles chaque année en Côte d'Ivoire, environ 25 millions de comptes, plus de 52 000 entreprises déjà inscrites à la facture obligatoire.</p></div>
+      <div class="carte"><span class="ico">🚪</span><h3>La place est libre</h3><p>Dans tout le pays, quatre entreprises seulement savent connecter un logiciel aux impôts. Aucune ne le relie aux paiements.</p></div>
+    </div>
+  </section>
+
+  <!-- 4. LE MODÈLE -->
+  <section>
+    <div class="marqueur"><span class="n">4</span><span class="lab">Le modèle</span></div>
+    <h2>La machine à revenus</h2>
+    <p class="lead">SwimPay gagne sur quatre moteurs. Aucun ne dépend d'une astuce, tous se renforcent quand le réseau grandit.</p>
+
+    <div class="quatre">
+      <div class="carte"><span class="ico">💳</span><h3>Les abonnements</h3><p>Le revenu sûr et récurrent. PME 15 000 F par mois, commerçant 5 000 à 7 500.</p></div>
+      <div class="carte"><span class="ico">🔀</span><h3>Les frais par opération</h3><p>Selon la nature : mobile vers banque, mobile vers mobile. Petit sur chaque, réel sur le volume.</p></div>
+      <div class="carte"><span class="ico">🛒</span><h3>Le paiement en ligne</h3><p>Le marché est haut. On facture sous lui, et on livre la facture obligatoire.</p></div>
+      <div class="carte"><span class="ico">🧲</span><h3>Le transfert gratuit</h3><p>Il fait entrer les clients. Plus ils sont nombreux, plus l'argent reste dedans, plus la marge grandit.</p></div>
+    </div>
+
+    <p class="sous-titre">1 · L'abonnement, le revenu sûr</p>
+    <div class="chiffres">
+      <div class="gros"><div class="qui">Le particulier</div><div class="num">gratuit</div><div class="txt">Il fait venir tout le monde. Le volume et la donnée sont la valeur.</div></div>
+      <div class="gros"><div class="qui">Le commerçant</div><div class="num">5 000 <span class="u">à 7 500 F/mois</span></div><div class="txt">Toujours sous les outils de facturation existants.</div></div>
+      <div class="gros"><div class="qui">La PME</div><div class="num">15 000 <span class="u">F/mois</span></div><div class="txt">Le cœur du revenu. Rentable dès ~100 clients payants.</div></div>
+    </div>
+
+    <div class="note"><span class="titre">Là où on a du levier, on facture plus</span>La facture obligatoire est un terrain vide : les logiciels concurrents prennent ~12 000 F rien que pour facturer, sans les paiements. Le paiement en ligne, le marché est à 2,25 à 3,5 %. SwimPay monte ses prix sur ces deux terrains, reste sous le marché, et garde plus de marge.</div>
+
+    <p class="sous-titre">2 · L'argent qui circule entre nos clients</p>
+    <div class="duo">
+      <div class="carte"><span class="ico">🔄</span><h3>La marge grandit avec le réseau</h3><p>Chaque opérateur prend environ 1 % quand l'argent le traverse. Mais quand un client SwimPay paie un autre client SwimPay, l'argent ne touche aucun opérateur : il change de mains dans nos livres, sans frais. Plus nos clients forment un réseau, une PME et ses employés, un commerçant et ses fournisseurs, plus l'argent reste dedans, et plus notre marge grandit.</p></div>
+      <div class="carte"><span class="ico">🛒</span><h3>Le paiement en ligne paie mieux</h3><p>En ligne, encaisser coûte 2,25 à 3,5 % chez les autres. SwimPay le fait moins cher et livre en plus la facture officielle obligatoire. On facture sous le marché, et il reste une vraie marge.</p></div>
+    </div>
+
+    <p class="sous-titre">3 · Les chiffres, sur des exemples</p>
+
+    <div class="ex">
+      <p class="ex-h">Un paiement en ligne de 50 000 F</p>
+      <div class="tarifs">
+        <div class="r"><span class="op">Ce qu'un concurrent prendrait <span class="src">PayDunya, 2,25 %</span></span><span class="px">1 125 F</span></div>
+        <div class="r"><span class="op">Ce que SwimPay facture au marchand <span class="src">1,8 %</span></span><span class="px">900 F</span></div>
+        <div class="r"><span class="op">Ce que ça coûte à SwimPay <span class="src">encaissement opérateur, ~1 %</span></span><span class="px">500 F</span></div>
+        <div class="r total"><span class="op">Marge SwimPay</span><span class="px">400 F</span></div>
+      </div>
+      <p class="ex-sub">Le marchand paie moins cher qu'ailleurs et reçoit sa facture officielle, que le concurrent ne livre pas. SwimPay gagne 400 F sur la vente, plus l'abonnement.</p>
+    </div>
+
+    <div class="ex">
+      <p class="ex-h">Une PME paie 40 salaires de 150 000 F</p>
+      <div class="tarifs">
+        <div class="r"><span class="op">La paie du mois <span class="src">40 × 150 000</span></span><span class="px">6 000 000 F</span></div>
+        <div class="r"><span class="op">Un intermédiaire classique <span class="src">2 %</span></span><span class="px">120 000 F</span></div>
+        <div class="r"><span class="op">Coût pour SwimPay si les employés sont clients <span class="src">interne, sans frais</span></span><span class="px free">~0 F</span></div>
+        <div class="r"><span class="op">Ce que SwimPay facture à la PME <span class="src">0,5 %</span></span><span class="px">30 000 F</span></div>
+        <div class="r total"><span class="op">Marge SwimPay</span><span class="px">~30 000 F</span></div>
+      </div>
+      <p class="ex-sub">Quand les 40 employés ouvrent un compte SwimPay, la paie circule à l'intérieur, sans frais d'opérateur. SwimPay facture moitié moins qu'un intermédiaire, garde la marge, et gagne 40 utilisateurs.</p>
+    </div>
+
+    <div class="ex">
+      <p class="ex-h">Ce que rapporte une PME en un mois</p>
+      <div class="tarifs">
+        <div class="r"><span class="op">Abonnement <span class="src">garanti</span></span><span class="px">15 000 F</span></div>
+        <div class="r"><span class="op">Marge sur 2 M de ventes en ligne <span class="src">0,8 % net</span></span><span class="px">16 000 F</span></div>
+        <div class="r"><span class="op">Marge sur 3 M de paie interne <span class="src">0,5 %</span></span><span class="px">15 000 F</span></div>
+        <div class="r total"><span class="op">Total par PME et par mois</span><span class="px">~46 000 F</span></div>
+      </div>
+      <p class="ex-sub">Environ 100 PME couvrent tous les coûts. Les volumes sont des exemples, et nos prix restent à confirmer avec les partenaires.</p>
+    </div>
+
+    <div class="note"><span class="titre">Ce qu'on ne fait pas</span>Le transfert simple va vers le gratuit avec le nouveau rail public de la Banque Centrale. Tant mieux, SwimPay ne construit pas là-dessus. On gagne sur l'abonnement, sur l'argent qui circule entre nos clients, et sur la facture que personne d'autre ne livre.</div>
+  </section>
+
+  <!-- 5. CONCURRENTS -->
+  <section>
+    <div class="marqueur"><span class="n">5</span><span class="lab">Le paysage</span></div>
+    <h2>Qui facture quoi, par terrain</h2>
+    <p class="lead">SwimPay ne se bat pas sur un seul front. Voici les concurrents et leurs prix, terrain par terrain.</p>
+
+    <p class="sous-titre">La facture obligatoire</p>
+    <div class="tarifs">
+      <div class="r"><span class="op">SAGE, KOMPTO <span class="src">les 4 agréés, logiciel seul</span></span><span class="px">~12 000 F/mois</span></div>
+      <div class="r total"><span class="op">SwimPay <span class="src">inclus, et relié aux paiements</span></span><span class="px">abonnement</span></div>
+    </div>
+    <p class="ex-sub">Aucun des quatre agréés ne relie la facture aux paiements. C'est le seul terrain vraiment vide.</p>
+
+    <p class="sous-titre">Encaisser une vente</p>
+    <div class="tarifs">
+      <div class="r"><span class="op">Wave</span><span class="px">~1 %</span></div>
+      <div class="r"><span class="op">Orange Money</span><span class="px">~1 %</span></div>
+      <div class="r"><span class="op">MTN</span><span class="px">1,5 à 2 %</span></div>
+      <div class="r"><span class="op">PayDunya</span><span class="px">2,25 %</span></div>
+      <div class="r"><span class="op">CinetPay</span><span class="px">1,5 à 3,5 %</span></div>
+      <div class="r"><span class="op">Hub2</span><span class="px">1,8 à 2,5 %</span></div>
+      <div class="r total"><span class="op">SwimPay <span class="src">au niveau du marché, + la facture</span></span><span class="px">~1 %</span></div>
+    </div>
+
+    <p class="sous-titre">Payer les salaires</p>
+    <div class="tarifs">
+      <div class="r"><span class="op">Julaya <span class="src">le leader de la paie</span></span><span class="px">0,5 à 1,5 %</span></div>
+      <div class="r"><span class="op">CinetPay</span><span class="px">1,5 %</span></div>
+      <div class="r"><span class="op">PayDunya</span><span class="px">2 %</span></div>
+      <div class="r total"><span class="op">SwimPay <span class="src">gratuit si les employés sont clients</span></span><span class="px">0,5 %</span></div>
+    </div>
+
+    <p class="sous-titre">Envoyer vers la banque</p>
+    <div class="tarifs">
+      <div class="r"><span class="op">Wave vers banque</span><span class="px">~1 %</span></div>
+      <div class="r"><span class="op">Orange vers banque</span><span class="px">variable</span></div>
+      <div class="r"><span class="op">Rails, PayDunya ou CinetPay</span><span class="px">1,5 à 2 %</span></div>
+      <div class="r total"><span class="op">SwimPay <span class="src">trésorerie de la PME</span></span><span class="px">1 à 1,5 %</span></div>
+    </div>
+
+    <p class="sous-titre">Paiement en ligne, checkout</p>
+    <div class="tarifs">
+      <div class="r"><span class="op">Hub2</span><span class="px">1,8 à 2,5 %</span></div>
+      <div class="r"><span class="op">PayDunya</span><span class="px">2,25 %</span></div>
+      <div class="r"><span class="op">CinetPay</span><span class="px">1,5 à 3,5 %</span></div>
+      <div class="r total"><span class="op">SwimPay <span class="src">+ la facture obligatoire</span></span><span class="px">1,5 %</span></div>
+    </div>
+
+    <p class="sous-titre">Le transfert simple, grand public</p>
+    <div class="tarifs">
+      <div class="r"><span class="op">Wave, MTN, Moov</span><span class="px">1 %</span></div>
+      <div class="r"><span class="op">Orange, même réseau</span><span class="px free">gratuit</span></div>
+      <div class="r"><span class="op">PI-SPI, rail public 2026</span><span class="px free">gratuit</span></div>
+      <div class="r total"><span class="op">SwimPay <span class="src">on ne cherche pas de marge ici</span></span><span class="px">au marché</span></div>
+    </div>
+
+    <div class="note"><span class="titre">Les deux gros à surveiller</span>Djamo, la mieux financée (17 M$), et Julaya, le leader de la paie, ont l'argent et les clients. Mais Djamo vise la néobanque grand public, et aucun des deux ne relie l'encaissement à la facture obligatoire. C'est là que SwimPay se place.</div>
+
+    <p class="ex-sub">Tarifs vérifiés en source primaire pour PayDunya, Julaya et CinetPay. Wave, Orange, MTN, Moov et Hub2 estimés d'après sources publiques.</p>
+  </section>
+
+  <!-- 6. LE MOAT -->
+  <section>
+    <div class="marqueur"><span class="n">6</span><span class="lab">La barrière à l'entrée</span></div>
+    <h2>Difficile à copier</h2>
+    <div class="duo">
+      <div class="carte"><span class="ico">🔗</span><h3>Voir les deux moitiés</h3><p>Une banque ne voit que son compte. Un opérateur ne voit que le paiement. Les impôts ne voient que la facture. SwimPay voit les deux, ce qui permet de tout relier et, demain, d'ouvrir l'accès au crédit sur des revenus prouvés.</p></div>
+      <div class="carte"><span class="ico">🏗️</span><h3>Un socle déjà bâti</h3><p>Le logiciel qui fait ce travail existe déjà, éprouvé et testé. La partie difficile, la mémoire fiable de chaque opération, est faite. Un concurrent partirait de zéro.</p></div>
+    </div>
+  </section>
+
+  <!-- 7. PORTEFEUILLE -->
+  <section>
+    <div class="marqueur"><span class="n">7</span><span class="lab">Pour l'investisseur</span></div>
+    <h2>Ce que votre portefeuille rapporte</h2>
+    <p class="lead">Vous avez des clients, des PME, des commerçants, des relations. Voici ce que chacun génère, et ce qu'un portefeuille entier produit.</p>
+
+    <p class="sous-titre">La valeur d'un client, par mois</p>
+    <div class="tarifs">
+      <div class="r"><span class="op">Une PME <span class="src">abonnement + marge</span></span><span class="px">~40 000 F</span></div>
+      <div class="r"><span class="op">Un commerçant <span class="src">abonnement + marge</span></span><span class="px">~8 000 F</span></div>
+    </div>
+
+    <p class="sous-titre">Trois portefeuilles, le revenu annuel</p>
+    <div class="panneau">
+      <svg viewBox="0 0 640 272" role="img" aria-label="Revenu annuel selon la taille du portefeuille apporté : 43 millions, 192 millions, 432 millions de francs">
+        <line x1="40" y1="210" x2="600" y2="210" stroke="var(--trait)" stroke-width="1.5"/>
+        <!-- A -->
+        <rect x="80" y="192" width="110" height="18" rx="4" fill="var(--acide)"/>
+        <text x="135" y="184" text-anchor="middle" font-family="Archivo, sans-serif" font-weight="700" font-size="15" fill="var(--encre)">43 M F/an</text>
+        <text x="135" y="232" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--encre)">A</text>
+        <text x="135" y="250" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--gris)">50 PME · 200 comm.</text>
+        <!-- B -->
+        <rect x="265" y="130" width="110" height="80" rx="4" fill="var(--acide)"/>
+        <text x="320" y="122" text-anchor="middle" font-family="Archivo, sans-serif" font-weight="700" font-size="15" fill="var(--encre)">192 M F/an</text>
+        <text x="320" y="232" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--encre)">B</text>
+        <text x="320" y="250" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--gris)">200 PME · 1 000 comm.</text>
+        <!-- C -->
+        <rect x="450" y="30" width="110" height="180" rx="4" fill="var(--acide)"/>
+        <text x="505" y="22" text-anchor="middle" font-family="Archivo, sans-serif" font-weight="700" font-size="15" fill="var(--encre)">432 M F/an</text>
+        <text x="505" y="232" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--encre)">C</text>
+        <text x="505" y="250" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--gris)">500 PME · 2 000 comm.</text>
+      </svg>
+      <p class="cap">Revenu annuel généré pour SwimPay selon la taille du portefeuille apporté. Valeurs par client prudentes, volumes d'exemple.</p>
+    </div>
+
+    <div class="note"><span class="titre">Votre part là-dedans</span>Vous entrez de deux façons. En apporteur, vous touchez une part des abonnements que votre portefeuille génère, chaque mois. En investisseur, vous entrez au capital sur ces chiffres réels, pas sur des promesses. Votre portefeuille × la valeur par client = le revenu qu'il produit, et vous en partagez le fruit.</div>
+  </section>
+
+  <!-- 8. STATUT -->
+  <section>
+    <div class="marqueur"><span class="n">8</span><span class="lab">Où nous en sommes</span></div>
+    <h2>Ce qui est fait, ce qu'il reste</h2>
+    <p class="lead">Le logiciel est construit et vérifié. Voici ses pièces, et les deux branchements qui manquent.</p>
+
+    <div class="panneau">
+      <svg viewBox="0 0 720 386" role="img" aria-label="Le cerveau construit en trois familles de modules, et les deux branchements manquants">
+        <defs><marker id="mod" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+
+        <!-- Le cerveau -->
+        <rect x="12" y="10" width="696" height="232" rx="14" fill="none" stroke="var(--acide-fonce)" stroke-width="2"/>
+        <rect x="12" y="10" width="6" height="232" rx="3" fill="var(--acide)"/>
+        <text x="38" y="40" font-family="Archivo, sans-serif" font-weight="700" font-size="17" fill="var(--encre)">Le cerveau</text>
+        <text x="150" y="40" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--acide-fonce)">construit et vérifié · 307 tests automatiques</text>
+
+        <!-- Colonne 1 -->
+        <rect x="36" y="58" width="204" height="166" rx="10" fill="none" stroke="var(--trait)" stroke-width="1.5"/>
+        <text x="138" y="84" text-anchor="middle" font-family="Archivo, sans-serif" font-weight="700" font-size="15" fill="var(--encre)">Décider</text>
+        <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--encre-doux)">
+          <text x="56" y="112">· le prix de l'opération</text>
+          <text x="56" y="136">· le chemin le moins cher</text>
+          <text x="56" y="160">· la décision, les deux liés</text>
+          <text x="56" y="184">· le choix du rail</text>
+        </g>
+        <text x="138" y="212" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--gris)">la marge de chaque opération</text>
+
+        <!-- Colonne 2 -->
+        <rect x="256" y="58" width="204" height="166" rx="10" fill="none" stroke="var(--trait)" stroke-width="1.5"/>
+        <text x="358" y="84" text-anchor="middle" font-family="Archivo, sans-serif" font-weight="700" font-size="15" fill="var(--encre)">Facturer</text>
+        <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--encre-doux)">
+          <text x="276" y="112">· le calcul des taxes</text>
+          <text x="276" y="136">· l'envoi aux impôts</text>
+          <text x="276" y="160">· les erreurs traitées</text>
+          <text x="276" y="184">· le stock de timbres</text>
+        </g>
+        <text x="358" y="212" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--gris)">la facture officielle, sans effort</text>
+
+        <!-- Colonne 3 -->
+        <rect x="476" y="58" width="204" height="166" rx="10" fill="none" stroke="var(--trait)" stroke-width="1.5"/>
+        <text x="578" y="84" text-anchor="middle" font-family="Archivo, sans-serif" font-weight="700" font-size="15" fill="var(--encre)">Ranger</text>
+        <g font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--encre-doux)">
+          <text x="496" y="112">· relier paiement et vente</text>
+          <text x="496" y="136">· l'annuaire des clients</text>
+          <text x="496" y="160">· l'import des relevés</text>
+          <text x="496" y="184">· l'équilibre des caisses</text>
+        </g>
+        <text x="578" y="212" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11" fill="var(--gris)">des comptes justes, en direct</text>
+
+        <!-- Liaison -->
+        <g fill="none" stroke="var(--gris)" color="var(--gris)" stroke-width="1.8">
+          <path d="M360 242 L 360 276" marker-end="url(#mod)"/>
+        </g>
+        <text x="376" y="266" font-family="IBM Plex Mono, monospace" font-size="11.5" fill="var(--gris)">il attend deux branchements</text>
+
+        <!-- Les bras -->
+        <rect x="12" y="280" width="696" height="92" rx="14" fill="none" stroke="var(--gris)" stroke-width="2" stroke-dasharray="7 6"/>
+        <text x="38" y="308" font-family="Archivo, sans-serif" font-weight="700" font-size="17" fill="var(--encre)">Les bras</text>
+        <text x="128" y="308" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--gris)">à obtenir, hors de notre main</text>
+
+        <g font-family="IBM Plex Mono, monospace" font-size="12.5" fill="var(--encre)">
+          <g fill="none" stroke="var(--gris)" stroke-width="1.5" stroke-dasharray="5 4">
+            <rect x="36" y="322" width="308" height="34" rx="9"/>
+            <rect x="376" y="322" width="308" height="34" rx="9"/>
+          </g>
+          <text x="190" y="344" text-anchor="middle">La clé des impôts</text>
+          <text x="530" y="344" text-anchor="middle">Le contrat avec un partenaire</text>
+        </g>
+      </svg>
+      <p class="cap">Chaque pièce est écrite, testée automatiquement, et relue par un second regard chargé de la casser. La partie difficile est faite.</p>
+    </div>
+
+    <p class="lead" style="margin-top:34px">Voici comment ce moteur choisit, pour chaque opération, le chemin le moins cher.</p>
+
+    <div class="panneau">
+      <svg viewBox="0 0 720 360" role="img" aria-label="L'algorithme : quatre questions dans l'ordre, du chemin gratuit au filet de sécurité">
+        <defs><marker id="alg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+
+        <rect x="250" y="8" width="220" height="36" rx="9" fill="var(--acide)"/>
+        <text x="360" y="31" text-anchor="middle" font-family="Archivo, sans-serif" font-weight="700" font-size="14" fill="#141414">Une opération arrive</text>
+
+        <g fill="none" stroke="currentColor" color="var(--encre-doux)" stroke-width="1.6">
+          <path d="M360 44 L 360 62" marker-end="url(#alg)"/>
+          <rect x="60" y="66" width="380" height="40" rx="9"/>
+          <path d="M440 86 L 500 86" marker-end="url(#alg)"/>
+        </g>
+        <text x="250" y="91" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12.5" fill="var(--encre)">1 · Les deux comptes sont chez SwimPay ?</text>
+        <g fill="none" stroke="var(--acide-fonce)" stroke-width="1.7"><rect x="504" y="66" width="200" height="40" rx="9"/></g>
+        <text x="604" y="85" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--encre)">Écriture interne</text>
+        <text x="604" y="99" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--gris)">coût : 0 F</text>
+
+        <g fill="none" stroke="currentColor" color="var(--encre-doux)" stroke-width="1.6">
+          <path d="M250 106 L 250 128" marker-end="url(#alg)"/>
+          <rect x="60" y="132" width="380" height="40" rx="9"/>
+          <path d="M440 152 L 500 152" marker-end="url(#alg)"/>
+        </g>
+        <text x="250" y="157" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12.5" fill="var(--encre)">2 · L'argent entre depuis un mobile ?</text>
+        <g fill="none" stroke="var(--acide-fonce)" stroke-width="1.7"><rect x="504" y="132" width="200" height="40" rx="9"/></g>
+        <text x="604" y="151" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--encre)">Capture même réseau</text>
+        <text x="604" y="165" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--gris)">le QR s'adapte au payeur</text>
+
+        <g fill="none" stroke="currentColor" color="var(--encre-doux)" stroke-width="1.6">
+          <path d="M250 172 L 250 194" marker-end="url(#alg)"/>
+          <rect x="60" y="198" width="380" height="40" rx="9"/>
+          <path d="M440 218 L 500 218" marker-end="url(#alg)"/>
+        </g>
+        <text x="250" y="223" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12.5" fill="var(--encre)">3 · Notre caisse du réseau visé suffit ?</text>
+        <g fill="none" stroke="var(--acide-fonce)" stroke-width="1.7"><rect x="504" y="198" width="200" height="40" rx="9"/></g>
+        <text x="604" y="217" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--encre)">On paie depuis la caisse</text>
+        <text x="604" y="231" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--gris)">rien ne traverse</text>
+
+        <g fill="none" stroke="currentColor" color="var(--encre-doux)" stroke-width="1.6">
+          <path d="M250 238 L 250 260" marker-end="url(#alg)"/>
+          <rect x="60" y="264" width="380" height="40" rx="9"/>
+          <path d="M440 284 L 500 284" marker-end="url(#alg)"/>
+        </g>
+        <text x="250" y="289" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12.5" fill="var(--encre)">4 · Sinon : le filet de sécurité</text>
+        <g fill="none" stroke="var(--gris)" stroke-width="1.7" stroke-dasharray="5 4"><rect x="504" y="264" width="200" height="40" rx="9"/></g>
+        <text x="604" y="283" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="12" fill="var(--encre)">Rail le moins cher</text>
+        <text x="604" y="297" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="10.5" fill="var(--gris)">jamais de refus, un coût</text>
+
+        <text x="360" y="340" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="11.5" fill="var(--gris)">Le prix suit la nature de l'opération. Le chemin minimise le coût. La différence est la marge.</text>
+      </svg>
+      <p class="cap">Ce moteur est déjà écrit et couvert par des tests automatiques. Il attend les connexions aux réseaux et aux impôts, les bras.</p>
+    </div>
+
+    <ul class="statut">
+      <li><span class="pastille fait"></span><span><b>Fait.</b> Le logiciel : encaissement, facturation aux impôts, mise en ordre des comptes. Éprouvé et testé.</span></li>
+      <li><span class="pastille fait"></span><span><b>Fait.</b> Toute la recherche : la loi, le marché, les partenaires, la porte des impôts vérifiée en source officielle.</span></li>
+      <li><span class="pastille encours"></span><span><b>En cours.</b> L'accès de test aux impôts <small>(demande envoyée)</small> et le choix du partenaire qui déplacera l'argent.</span></li>
+      <li><span class="pastille avenir"></span><span><b>À venir.</b> Le lancement, et un premier groupe de PME déjà démarchées qui attend le service.</span></li>
+    </ul>
+    <div class="note"><span class="titre">Ce que l'investissement débloque</span>Le contrat avec un partenaire licencié, la sortie de l'application grand public, et l'équipe pour aller chercher les premiers clients payants. Le montant et les conditions restent à discuter ensemble.</div>
+  </section>
+
+  <footer>
+    <div class="marque">Swim<span class="dot">Pay</span></div>
+    <p>Document de présentation · août 2026 · les chiffres de marché sont des estimations à confirmer.</p>
+  </footer>
+
+</div>
+
+</body>
+</html>

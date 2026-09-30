@@ -1,0 +1,711 @@
+<title>Le cachet</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --fond:    #0D0E0A;
+    --surface: #16170F;
+    --bord:    #2A2C1E;
+    --encre:   #EDEDE4;
+    --encre-2: #8E9083;
+    --acide:   #A2FF01;
+    --r: 12px;
+  }
+  :root[data-theme="light"] {
+    --fond: #F2F2EC; --surface: #FFFFFF; --bord: #DCDCD2;
+    --encre: #14150F; --encre-2: #5A5C50;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --fond: #F2F2EC; --surface: #FFFFFF; --bord: #DCDCD2;
+      --encre: #14150F; --encre-2: #5A5C50;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0; background: var(--fond); color: var(--encre);
+    font-family: Archivo, "Segoe UI", system-ui, sans-serif;
+    font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    width: min(100% - 32px, 1000px); margin: 0 auto; padding: 40px 0 76px;
+    display: flex; flex-direction: column; gap: 26px;
+  }
+
+  header { display: flex; flex-direction: column; gap: 8px; }
+  .sur {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--encre-2);
+  }
+  h1 { margin: 0; font-size: clamp(28px, 5vw, 42px); font-weight: 700; letter-spacing: -.025em; }
+  .chapo { margin: 0; max-width: 64ch; color: var(--encre-2); }
+  .chapo b { color: var(--encre); font-weight: 600; }
+
+  /* ── la scène ─────────────────────────────────────────────── */
+
+  .scene {
+    position: relative; border-radius: var(--r);
+    border: 1px solid var(--bord); background: #141414;
+    aspect-ratio: 16 / 10; min-height: 320px; overflow: hidden;
+  }
+  .scene canvas { display: block; width: 100%; height: 100%; }
+
+  .hud {
+    position: absolute; left: 16px; bottom: 14px;
+    font-family: "IBM Plex Mono", monospace; font-size: 11px;
+    letter-spacing: .05em; color: rgba(255, 255, 255, .42);
+    pointer-events: none; font-variant-numeric: tabular-nums;
+  }
+
+  /* ── transport & réglages ─────────────────────────────────── */
+
+  .transport { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+
+  button {
+    font: 600 14px/1 Archivo, sans-serif; color: var(--fond); background: var(--encre);
+    border: 0; border-radius: 999px; padding: 11px 20px; cursor: pointer; min-width: 92px;
+    transition: transform 160ms cubic-bezier(.23,1,.32,1);
+  }
+  button:active { transform: scale(.97); }
+  button:focus-visible { outline: 2px solid var(--acide); outline-offset: 3px; }
+  button.creux { background: none; color: var(--encre); box-shadow: inset 0 0 0 1px var(--bord); }
+
+  .horloge {
+    font-family: "IBM Plex Mono", monospace; font-size: 13px;
+    font-variant-numeric: tabular-nums; color: var(--encre-2); white-space: nowrap;
+  }
+  .horloge b { color: var(--encre); font-weight: 600; }
+
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none; background: none; height: 22px; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--bord); }
+  input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--bord); }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--encre); border: 3px solid var(--fond); margin-top: -6px;
+    box-shadow: 0 0 0 1px var(--bord);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%; background: var(--encre);
+    border: 3px solid var(--fond); box-shadow: 0 0 0 1px var(--bord);
+  }
+  .scrub { flex: 1 1 200px; min-width: 160px; }
+
+  .phases {
+    position: relative; height: 42px; border-radius: 8px;
+    border: 1px solid var(--bord); background: var(--surface); overflow: hidden;
+  }
+  .seg {
+    position: absolute; top: 0; bottom: 0; display: flex; align-items: center;
+    padding-left: 9px; font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
+    letter-spacing: .05em; text-transform: uppercase; color: var(--encre-2);
+    border-left: 1px solid var(--bord); white-space: nowrap; overflow: hidden;
+  }
+  .s1 { background: rgba(162,255,1,.10); }
+  .s2 { background: rgba(162,255,1,.30); color: var(--encre); }
+  .s3 { background: rgba(162,255,1,.14); }
+  .s4 { background: transparent; }
+  .tete { position: absolute; top: -1px; bottom: -1px; left: 0; width: 2px; background: var(--encre); will-change: transform; }
+
+  .reglages {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px 24px; padding: 20px; border-radius: var(--r);
+    border: 1px solid var(--bord); background: var(--surface);
+  }
+  .champ { display: flex; flex-direction: column; gap: 5px; }
+  .champ label {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+    font-size: 12.5px; color: var(--encre-2);
+  }
+  .champ label b {
+    font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums;
+    font-weight: 500; color: var(--encre);
+  }
+  .champ .aide { font-size: 11.5px; color: var(--encre-2); line-height: 1.4; }
+
+  .mesure {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1px; background: var(--bord); border: 1px solid var(--bord);
+    border-radius: var(--r); overflow: hidden;
+  }
+  .mesure div { background: var(--fond); padding: 13px 15px; display: flex; flex-direction: column; gap: 3px; }
+  .mesure span {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--encre-2);
+  }
+  .mesure strong {
+    font-family: "IBM Plex Mono", monospace; font-size: 18px;
+    font-weight: 600; font-variant-numeric: tabular-nums;
+  }
+
+  .note { font-size: 13.5px; color: var(--encre-2); max-width: 70ch; margin: 0; }
+  .note b { color: var(--encre); font-weight: 600; }
+  h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+  .bloc { display: flex; flex-direction: column; gap: 10px; }
+</style>
+
+<div class="page">
+
+  <header>
+    <p class="sur">Concept de mouvement · section « Émettez vos factures en une minute »</p>
+    <h1>Le cachet</h1>
+    <p class="chapo">
+      Le geste que la section raconte, et rien d'autre : une facture arrive, un
+      cachet la frappe, <b>elle repart certifiée</b>. Le papier est un plan
+      subdivisé dont les sommets sont déplacés dans un shader ; l'onde de choc
+      part du point d'impact et s'amortit. <b>WebGL brut, aucune bibliothèque.</b>
+    </p>
+  </header>
+
+  <div class="scene" id="scene">
+    <canvas id="c"></canvas>
+    <p class="hud" id="hud">—</p>
+  </div>
+
+  <div class="transport">
+    <button id="btnLire" type="button">Pause</button>
+    <button id="btnFrapper" type="button" class="creux">Frapper</button>
+    <input class="scrub" id="scrub" type="range" min="0" max="1000" value="0" step="1"
+           aria-label="Position dans la boucle">
+    <p class="horloge"><b id="tc">0,00</b> / <span id="tb">4,60</span> s</p>
+  </div>
+
+  <div class="phases" id="phases">
+    <div class="seg s1" id="g1">arrivée</div>
+    <div class="seg s2" id="g2">frappe</div>
+    <div class="seg s3" id="g3">amortissement</div>
+    <div class="seg s4" id="g4">palier · sortie</div>
+    <div class="tete" id="tete"></div>
+  </div>
+
+  <div class="reglages">
+    <div class="champ">
+      <label for="rAmp">Force de l'onde <b><span id="vAmp">100</span> %</b></label>
+      <input id="rAmp" type="range" min="0" max="220" step="1" value="100">
+      <p class="aide">Amplitude du déplacement au point d'impact.</p>
+    </div>
+    <div class="champ">
+      <label for="rFreq">Serrage des rides <b><span id="vFreq">22</span></b></label>
+      <input id="rFreq" type="range" min="6" max="46" step="1" value="22">
+      <p class="aide">Nombre de crêtes par unité. Trop serré, ça moire.</p>
+    </div>
+    <div class="champ">
+      <label for="rAmort">Amortissement <b><span id="vAmort">2,60</span></b></label>
+      <input id="rAmort" type="range" min="60" max="600" step="5" value="260">
+      <p class="aide">Vitesse à laquelle l'onde meurt. Bas = le papier vibre longtemps.</p>
+    </div>
+    <div class="champ">
+      <label for="rBoucle">Boucle <b><span id="vBoucle">4,60</span> s</b></label>
+      <input id="rBoucle" type="range" min="3000" max="8000" step="20" value="4600">
+      <p class="aide">Durée totale avant reprise.</p>
+    </div>
+  </div>
+
+  <div class="mesure">
+    <div><span>Bibliothèque</span><strong>aucune</strong></div>
+    <div><span>Poids du script</span><strong id="mPoids">—</strong></div>
+    <div><span>Cadence</span><strong id="mFps">—</strong></div>
+    <div><span>Sommets</span><strong id="mVerts">—</strong></div>
+  </div>
+
+  <div class="bloc">
+    <h2>Pourquoi pas Three.js</h2>
+    <p class="note">
+      Three.js minifié pèse environ <b>660 Ko</b>, à peu près <b>170 Ko</b> une fois
+      compressé. Cette scène est <b>un quad déplacé et un disque</b> : la totalité
+      du code ci-dessus tient dans quelques kilo-octets. Poser une bibliothèque de
+      170 Ko pour dessiner une feuille de papier irait contre la règle du repo, et
+      contre le constat que la page pèse déjà 1,88 Mo.
+      Three.js gagne le droit d'entrer le jour où il faut des ombres portées
+      réelles, des modèles GLTF ou du post-traitement — dis-le et je bascule.
+    </p>
+  </div>
+
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+  const cv = $("c");
+  const gl = cv.getContext("webgl2", { antialias: true, alpha: false, powerPreference: "high-performance" });
+
+  if (!gl) {
+    $("scene").innerHTML = '<p style="color:#EDEDE4;padding:24px;font:15px Archivo,sans-serif">' +
+      'WebGL2 indisponible sur ce navigateur.</p>';
+    return;
+  }
+
+  /* ── petite algèbre : de quoi poser une caméra, pas plus ─────────────── */
+  const M = {
+    ident: () => new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]),
+    mul: (a, b) => {
+      const o = new Float32Array(16);
+      for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) {
+        let s = 0;
+        for (let k = 0; k < 4; k++) s += a[k * 4 + r] * b[c * 4 + k];
+        o[c * 4 + r] = s;
+      }
+      return o;
+    },
+    persp: (fovy, asp, n, f) => {
+      const t = 1 / Math.tan(fovy / 2), o = new Float32Array(16);
+      o[0] = t / asp; o[5] = t; o[10] = (f + n) / (n - f); o[11] = -1; o[14] = 2 * f * n / (n - f);
+      return o;
+    },
+    regarde: (e, c, u) => {
+      const sub = (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]];
+      const nrm = (v) => { const l = Math.hypot(...v) || 1; return [v[0]/l, v[1]/l, v[2]/l]; };
+      const crs = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
+      const z = nrm(sub(e, c)), x = nrm(crs(u, z)), y = crs(z, x);
+      return new Float32Array([
+        x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0,
+        -(x[0]*e[0]+x[1]*e[1]+x[2]*e[2]),
+        -(y[0]*e[0]+y[1]*e[1]+y[2]*e[2]),
+        -(z[0]*e[0]+z[1]*e[1]+z[2]*e[2]), 1,
+      ]);
+    },
+    trs: (tx, ty, tz, rx, rz, s) => {
+      const cx = Math.cos(rx), sx = Math.sin(rx), cz = Math.cos(rz), sz = Math.sin(rz);
+      /* rotation Z puis X, puis échelle, puis translation */
+      const m = new Float32Array(16);
+      m[0] = cz * s;        m[1] = sz * cx * s;  m[2] = sz * sx * s;  m[3] = 0;
+      m[4] = -sz * s;       m[5] = cz * cx * s;  m[6] = cz * sx * s;  m[7] = 0;
+      m[8] = 0;             m[9] = -sx * s;      m[10] = cx * s;      m[11] = 0;
+      m[12] = tx;           m[13] = ty;          m[14] = tz;          m[15] = 1;
+      return m;
+    },
+  };
+
+  const compile = (type, src) => {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  };
+  const programme = (vs, fs) => {
+    const p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vs));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    return p;
+  };
+
+  /* ══════════ LE PAPIER ══════════
+     Un plan subdivisé. Le déplacement vit dans UNE fonction, appelée trois
+     fois : une pour la hauteur, deux pour les voisins. C'est ainsi qu'on
+     récupère la normale APRÈS déformation — l'oublier est le défaut classique,
+     la feuille ondule mais reste éclairée à plat. */
+
+  const VS_PAPIER = `#version 300 es
+  precision highp float;
+  in vec2 aP;                       // [-0.5, 0.5]^2
+  uniform mat4 uProj, uVue, uModele;
+  uniform float uT, uHitT, uAmp, uFreq, uAmort;
+  uniform vec2 uHit;
+  uniform vec2 uTaille;
+  out vec2 vUv;
+  out vec3 vN, vPos;
+  out float vOnde;
+
+  float deplace(vec2 p) {
+    // respiration : le papier n'est jamais parfaitement plat
+    float d = 0.012 * sin(p.x * 2.6 + uT * 1.05) * cos(p.y * 1.9 - uT * 0.82);
+    d += 0.006 * sin(p.y * 4.1 - uT * 1.4);
+
+    // l'onde de choc, depuis le point de frappe
+    float age = uT - uHitT;
+    if (age > 0.0 && age < 6.0) {
+      float r = length((p - uHit) * vec2(1.0, 1.32));
+      float onde = sin(r * uFreq - age * 13.5);
+      float spatial = exp(-r * 2.15);
+      float temporel = exp(-age * uAmort) * smoothstep(0.0, 0.045, age);
+      d += uAmp * onde * spatial * temporel;
+    }
+    return d;
+  }
+
+  void main() {
+    vec2 p = aP * uTaille;
+    float h = deplace(p);
+
+    // normale par différences finies sur la MÊME fonction
+    float e = 0.006;
+    vec3 n = normalize(vec3(-(deplace(p + vec2(e, 0.0)) - h) / e,
+                            -(deplace(p + vec2(0.0, e)) - h) / e, 1.0));
+
+    vec4 mp = uModele * vec4(p, h, 1.0);
+    vPos = mp.xyz;
+    vN = normalize(mat3(uModele) * n);
+    vUv = aP + 0.5;
+    vOnde = h;
+    gl_Position = uProj * uVue * mp;
+  }`;
+
+  const FS_PAPIER = `#version 300 es
+  precision highp float;
+  in vec2 vUv; in vec3 vN, vPos; in float vOnde;
+  uniform float uT, uHitT, uRevele;
+  out vec4 sortie;
+
+  // un damier pseudo-aléatoire, pour le pavé de contrôle
+  float hache(vec2 c) { return fract(sin(dot(floor(c), vec2(41.7, 289.1))) * 43758.5453); }
+
+  // Un carré de repérage : anneau plein 7x7, vide, puis noyau 3x3. Sans eux
+  // le pavé lisait comme des taches ; ce sont eux qui disent « code ».
+  float repere(vec2 f, vec2 c) {
+    vec2 d = abs(f - c);
+    float m = max(d.x, d.y);
+    return clamp(step(2.5, m) * step(m, 3.5) + step(m, 1.5), 0.0, 1.0);
+  }
+  float zoneRepere(vec2 f, vec2 c) {
+    vec2 d = abs(f - c);
+    return step(max(d.x, d.y), 4.0);
+  }
+
+  void main() {
+    vec2 uv = vUv;
+
+    // ── ce qui est imprimé sur la feuille ─────────────────────────────
+    vec3 encre = vec3(1.0);                      // le papier
+    float pap = 1.0;
+
+    // lignes de texte simulées, jamais lisibles : c'est une facture, pas un faux
+    float bandeY = fract(uv.y * 17.0);
+    float ligne = smoothstep(0.42, 0.36, abs(bandeY - 0.5));
+    float largeur = step(uv.x, 0.30 + 0.52 * hache(vec2(3.0, floor(uv.y * 17.0))));
+    float dansCorps = step(0.16, uv.y) * step(uv.y, 0.80) * step(0.09, uv.x);
+    encre = mix(encre, vec3(0.62), ligne * largeur * dansCorps * 0.85);
+
+    // le titre, une barre pleine en haut
+    float titre = step(0.86, uv.y) * step(uv.y, 0.93) * step(0.09, uv.x) * step(uv.x, 0.44);
+    encre = mix(encre, vec3(0.10), titre);
+
+    // ── le pavé de contrôle : il APPARAÎT à la frappe ────────────────
+    // uRevele va de 0 (avant la frappe) a 1 (pave entier). Chaque case
+    // s'allume quand le balayage passe SA diagonale : c'est un essuyage, pas
+    // un fondu. Ecrit dans l'autre sens la premiere fois, le pave s'effacait.
+    vec2 q = (uv - vec2(0.645, 0.115)) / 0.245;
+    float dansQ = step(0.0, q.x) * step(q.x, 1.0) * step(0.0, q.y) * step(q.y, 1.0);
+    // grille 21 x 21 : la taille d'un QR version 1
+    vec2 f = q * 21.0;
+    float fin = max(max(repere(f, vec2(3.5, 17.5)), repere(f, vec2(17.5, 17.5))),
+                    repere(f, vec2(3.5, 3.5)));
+    float occupe = clamp(zoneRepere(f, vec2(3.5, 17.5)) + zoneRepere(f, vec2(17.5, 17.5))
+                       + zoneRepere(f, vec2(3.5, 3.5)), 0.0, 1.0);
+    float cases = clamp(fin + step(0.5, hache(f)) * (1.0 - occupe), 0.0, 1.0);
+    float diag = (q.x + (1.0 - q.y)) * 0.5;
+    float apparu = smoothstep(diag - 0.04, diag + 0.24, uRevele);
+    float qr = dansQ * cases * apparu;
+    encre = mix(encre, vec3(0.635, 1.0, 0.004), qr);
+
+    // le cadre clair du pavé, pour qu'il se lise comme un bloc et non un bruit
+    float cadre = dansQ * (1.0 - step(0.03, min(min(q.x, 1.0 - q.x), min(q.y, 1.0 - q.y))));
+    encre = mix(encre, vec3(0.88), cadre * smoothstep(0.0, 0.3, uRevele) * 0.7);
+
+    // le bandeau acide en pied, révélé du même geste
+    float bande = step(0.09, uv.x) * step(uv.x, 0.09 + 0.42 * clamp(uRevele, 0.0, 1.0))
+                * step(0.052, uv.y) * step(uv.y, 0.088);
+    encre = mix(encre, vec3(0.635, 1.0, 0.004), bande);
+
+    // ── éclairage ────────────────────────────────────────────────────
+    vec3 N = normalize(vN);
+    vec3 L = normalize(vec3(-0.42, 0.55, 0.72));
+    float diff = clamp(dot(N, L), 0.0, 1.0);
+    vec3 V = normalize(vec3(0.0, 0.35, 2.6) - vPos);
+    vec3 H = normalize(L + V);
+    float spec = pow(clamp(dot(N, H), 0.0, 1.0), 42.0) * 0.16;
+    float bord = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 3.0) * 0.10;
+
+    vec3 col = encre * (0.30 + 0.78 * diff) + spec + bord;
+
+    // l'onde se lit aussi en lumière : les crêtes prennent le vert du studio
+    col += vec3(0.30, 0.62, 0.05) * clamp(vOnde, 0.0, 1.0) * 1.5;
+
+    sortie = vec4(col, 1.0);
+  }`;
+
+  /* ══════════ LE CACHET ══════════ */
+
+  const VS_SCEAU = `#version 300 es
+  precision highp float;
+  in vec2 aP;
+  uniform mat4 uProj, uVue, uModele;
+  out vec2 vUv;
+  void main() {
+    vUv = aP;
+    gl_Position = uProj * uVue * uModele * vec4(aP, 0.0, 1.0);
+  }`;
+
+  const FS_SCEAU = `#version 300 es
+  precision highp float;
+  in vec2 vUv;
+  uniform float uOp;
+  out vec4 sortie;
+  void main() {
+    float r = length(vUv) * 2.0;
+    if (r > 1.0) discard;
+    float bord = smoothstep(1.0, 0.93, r);
+    // un anneau FIN. Epais, le disque lisait comme un vinyle et non comme un
+    // cachet — defaut vu a la capture.
+    float anneau = smoothstep(0.74, 0.79, r) * smoothstep(0.89, 0.84, r);
+    vec3 col = mix(vec3(0.05), vec3(0.635, 1.0, 0.004), anneau);
+    // un croissant de lumiere en haut a gauche, jamais une tache centrale :
+    // au centre elle se lisait comme un trou.
+    col += 0.13 * smoothstep(0.62, 0.0, length(vUv * 2.0 - vec2(-0.30, 0.30))) * (1.0 - anneau);
+    sortie = vec4(col, bord * uOp);
+  }`;
+
+  /* ══════════ L'OMBRE DE CONTACT ══════════ */
+
+  const VS_OMBRE = `#version 300 es
+  precision highp float;
+  in vec2 aP;
+  uniform mat4 uProj, uVue, uModele;
+  out vec2 vUv;
+  void main() { vUv = aP; gl_Position = uProj * uVue * uModele * vec4(aP, 0.0, 1.0); }`;
+
+  const FS_OMBRE = `#version 300 es
+  precision highp float;
+  in vec2 vUv;
+  uniform float uOp;
+  out vec4 sortie;
+  void main() {
+    float d = length(vUv * vec2(1.0, 1.5)) * 2.0;
+    sortie = vec4(0.0, 0.0, 0.0, smoothstep(1.0, 0.0, d) * 0.5 * uOp);
+  }`;
+
+  const pPapier = programme(VS_PAPIER, FS_PAPIER);
+  const pSceau  = programme(VS_SCEAU, FS_SCEAU);
+  const pOmbre  = programme(VS_OMBRE, FS_OMBRE);
+
+  /* ── géométries ───────────────────────────────────────────────────── */
+  const NX = 96, NY = 128;                   // subdivision du papier
+  function grille(nx, ny) {
+    const pos = [], idx = [];
+    for (let y = 0; y <= ny; y++) for (let x = 0; x <= nx; x++) {
+      pos.push(x / nx - 0.5, y / ny - 0.5);
+    }
+    for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++) {
+      const a = y * (nx + 1) + x, b = a + 1, c = a + nx + 1, d = c + 1;
+      idx.push(a, c, b, b, c, d);
+    }
+    return { pos: new Float32Array(pos), idx: new Uint32Array(idx) };
+  }
+
+  function vaoDe(pos, idx) {
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+    const vb = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+    gl.bufferData(gl.ARRAY_BUFFER, pos, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    if (idx) {
+      const ib = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+    }
+    gl.bindVertexArray(null);
+    return vao;
+  }
+
+  const g = grille(NX, NY);
+  const vaoPapier = vaoDe(g.pos, g.idx);
+  const quad = new Float32Array([-0.5,-0.5, 0.5,-0.5, -0.5,0.5, -0.5,0.5, 0.5,-0.5, 0.5,0.5]);
+  const vaoQuad = vaoDe(quad, null);
+
+  const U = (p, ...n) => Object.fromEntries(n.map((k) => [k, gl.getUniformLocation(p, "u" + k)]));
+  const uP = U(pPapier, "Proj", "Vue", "Modele", "T", "HitT", "Amp", "Freq", "Amort", "Hit", "Taille", "Revele");
+  const uS = U(pSceau, "Proj", "Vue", "Modele", "Op");
+  const uO = U(pOmbre, "Proj", "Vue", "Modele", "Op");
+
+  /* ══════════ LE MOUVEMENT ══════════
+     Quatre temps, et le découpage vient du sens, pas d'un rythme choisi au
+     hasard : la feuille arrive, on la frappe, l'onde meurt, elle repart.
+     Comme sur la référence mesurée du socle, l'attaque est franche et le
+     freinage long — jamais un ease-in. */
+
+  const T = { arrivee: 0.70, frappe: 1.15, amorti: 3.10, sortie: 4.00 };
+  const st = { boucle: 4.60, amp: 0.085, freq: 22, amort: 2.60, lit: true, t: 0 };
+
+  const bez = (x1, y1, x2, y2) => {
+    const A = (a, b) => 1 - 3*b + 3*a, B = (a, b) => 3*b - 6*a, C = (a) => 3*a;
+    const cal = (t, a, b) => ((A(a,b)*t + B(a,b))*t + C(a))*t;
+    const pen = (t, a, b) => 3*A(a,b)*t*t + 2*B(a,b)*t + C(a);
+    return (x) => {
+      if (x <= 0) return 0; if (x >= 1) return 1;
+      let t = x;
+      for (let i = 0; i < 8; i++) {
+        const d = pen(t, x1, x2); if (Math.abs(d) < 1e-6) break;
+        const e = cal(t, x1, x2) - x; if (Math.abs(e) < 1e-6) return cal(t, y1, y2);
+        t -= e / d;
+      }
+      return cal(t, y1, y2);
+    };
+  };
+  const expoOut = bez(.16, 1, .3, 1);
+  const doux = bez(.65, 0, .35, 1);
+  const lerp = (a, b, p) => a + (b - a) * p;
+  const sat = (x) => Math.min(1, Math.max(0, x));
+
+  let large = 1, haut = 1;
+  function taille() {
+    const r = Math.min(devicePixelRatio || 1, 2);
+    const w = Math.round(cv.clientWidth * r), h = Math.round(cv.clientHeight * r);
+    if (w !== cv.width || h !== cv.height) { cv.width = w; cv.height = h; }
+    large = w; haut = h;
+  }
+
+  function rends(t) {
+    taille();
+    gl.viewport(0, 0, large, haut);
+    gl.clearColor(0.078, 0.078, 0.078, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.DEPTH_TEST);
+
+    const proj = M.persp(0.62, large / haut, 0.1, 40);
+    const vue = M.regarde([0, -0.28, 3.05], [0, 0.02, 0], [0, 1, 0]);
+
+    /* ── la feuille : arrivée, puis sortie ── */
+    const pA = expoOut(sat(t / T.arrivee));                       // entrée
+    const pS = doux(sat((t - T.sortie) / (st.boucle - T.sortie))); // sortie
+    const y  = lerp(-1.15, 0.0, pA) + pS * 1.5;
+    const z  = lerp(-0.7, 0.0, pA) + pS * 0.9;
+    const rz = lerp(-0.30, -0.055, pA) + pS * 0.22;
+    const rx = lerp(-1.05, -0.44, pA) - pS * 0.16;
+    const op = 1 - pS;
+
+    const modele = M.trs(0, y, z, rx, rz, 1);
+
+    /* ── l'ombre, collée sous la feuille ── */
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.depthMask(false);
+    gl.useProgram(pOmbre);
+    gl.bindVertexArray(vaoQuad);
+    gl.uniformMatrix4fv(uO.Proj, false, proj);
+    gl.uniformMatrix4fv(uO.Vue, false, vue);
+    gl.uniformMatrix4fv(uO.Modele, false,
+      M.mul(M.trs(0.05, y - 0.62, z - 0.10, -1.35, 0, 1), M.trs(0, 0, 0, 0, 0, 2.1)));
+    gl.uniform1f(uO.Op, op * 0.9);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+
+    /* ── le papier ── */
+    gl.useProgram(pPapier);
+    gl.bindVertexArray(vaoPapier);
+    gl.uniformMatrix4fv(uP.Proj, false, proj);
+    gl.uniformMatrix4fv(uP.Vue, false, vue);
+    gl.uniformMatrix4fv(uP.Modele, false, modele);
+    gl.uniform1f(uP.T, t);
+    gl.uniform1f(uP.HitT, T.frappe);
+    gl.uniform1f(uP.Amp, st.amp);
+    gl.uniform1f(uP.Freq, st.freq);
+    gl.uniform1f(uP.Amort, st.amort);
+    gl.uniform2f(uP.Hit, 0.14, -0.34);
+    gl.uniform2f(uP.Taille, 1.02, 1.42);
+    // 0 avant la frappe, 1 pavé entier. Le balayage part de l'impact.
+    gl.uniform1f(uP.Revele, expoOut(sat((t - T.frappe) / 0.60)));
+    gl.drawElements(gl.TRIANGLES, g.idx.length, gl.UNSIGNED_INT, 0);
+
+    /* ── le cachet : il tombe, frappe, repart ── */
+    const av = sat((T.frappe - t) / 0.42);        // 1 loin, 0 au contact
+    const ap = sat((t - T.frappe) / 0.85);
+    const hauteurSceau = av * av * 1.30 + ap * ap * 1.9;
+    const opSceau = (1 - sat((t - T.frappe - 0.30) / 0.5)) * sat(t / 0.5) * op;
+    if (opSceau > 0.004) {
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.useProgram(pSceau);
+      gl.bindVertexArray(vaoQuad);
+      gl.uniformMatrix4fv(uS.Proj, false, proj);
+      gl.uniformMatrix4fv(uS.Vue, false, vue);
+      gl.uniformMatrix4fv(uS.Modele, false,
+        M.mul(modele, M.trs(0.14, -0.34, 0.040 + hauteurSceau, 0, 0, 0.34)));
+      gl.uniform1f(uS.Op, opSceau);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      gl.disable(gl.BLEND);
+    }
+
+    gl.bindVertexArray(null);
+  }
+
+  /* ── boucle & transport ────────────────────────────────────────────── */
+  let precedent = null, dernierUi = -1, ech = [], fps = 0;
+
+  function tour(ts) {
+    if (precedent !== null && st.lit) {
+      const dt = (ts - precedent) / 1000;
+      st.t += dt;
+      if (st.t >= st.boucle) st.t -= st.boucle;
+      ech.push(ts - precedent);
+      if (ech.length > 90) ech.shift();
+    }
+    precedent = ts;
+    rends(st.t);
+
+    if (ts - dernierUi > 90) {
+      dernierUi = ts;
+      const m = ech.length > 8 ? ech.slice().sort((a, b) => a - b)[Math.floor(ech.length / 2)] : 0;
+      fps = m ? 1000 / m : 0;
+      $("tc").textContent = st.t.toFixed(2).replace(".", ",");
+      $("tete").style.transform = "translateX(" + (st.t / st.boucle * $("phases").clientWidth).toFixed(1) + "px)";
+      if (document.activeElement !== $("scrub")) $("scrub").value = Math.round(st.t / st.boucle * 1000);
+      $("mFps").textContent = fps ? fps.toFixed(0) + " Hz" : "—";
+      $("hud").textContent =
+        (st.t < T.arrivee ? "arrivée"
+         : st.t < T.frappe ? "en attente"
+         : st.t < T.amorti ? "frappe · onde"
+         : st.t < T.sortie ? "certifiée"
+         : "sortie") + "   t=" + st.t.toFixed(2).replace(".", ",") + " s";
+    }
+    requestAnimationFrame(tour);
+  }
+
+  function bande() {
+    const b = st.boucle, pc = (x) => (Math.min(x, b) / b * 100);
+    const a = pc(T.arrivee), f = pc(T.frappe), m = pc(T.amorti), s = pc(T.sortie);
+    $("g1").style.cssText = `left:0%;width:${a.toFixed(2)}%`;
+    $("g2").style.cssText = `left:${a.toFixed(2)}%;width:${(f - a).toFixed(2)}%`;
+    $("g3").style.cssText = `left:${f.toFixed(2)}%;width:${(m - f).toFixed(2)}%`;
+    $("g4").style.cssText = `left:${m.toFixed(2)}%;width:${(100 - m).toFixed(2)}%`;
+    $("tb").textContent = b.toFixed(2).replace(".", ",");
+  }
+
+  $("btnLire").addEventListener("click", () => {
+    st.lit = !st.lit;
+    $("btnLire").textContent = st.lit ? "Pause" : "Lire";
+  });
+  $("btnFrapper").addEventListener("click", () => { st.t = T.frappe - 0.42; st.lit = true; $("btnLire").textContent = "Pause"; });
+  $("scrub").addEventListener("input", (e) => {
+    st.lit = false; $("btnLire").textContent = "Lire";
+    st.t = (e.target.value / 1000) * st.boucle;
+  });
+
+  const relie = (id, span, f, txt) => $(id).addEventListener("input", (e) => {
+    f(parseFloat(e.target.value)); $(span).textContent = txt(); bande();
+  });
+  relie("rAmp", "vAmp", (v) => { st.amp = v / 100 * 0.085; }, () => Math.round(st.amp / 0.085 * 100));
+  relie("rFreq", "vFreq", (v) => { st.freq = v; }, () => st.freq);
+  relie("rAmort", "vAmort", (v) => { st.amort = v / 100; }, () => st.amort.toFixed(2).replace(".", ","));
+  relie("rBoucle", "vBoucle", (v) => { st.boucle = v / 1000; }, () => st.boucle.toFixed(2).replace(".", ","));
+
+  /* Le poids reel du script, mesure sur la page elle-meme : on ne l'annonce
+     pas au doigt mouille. */
+  const src = document.currentScript ? document.currentScript.textContent
+            : [...document.scripts].map((s) => s.textContent).join("");
+  $("mPoids").textContent = (new Blob([src]).size / 1024).toFixed(1).replace(".", ",") + " Ko";
+  $("mVerts").textContent = ((NX + 1) * (NY + 1)).toLocaleString("fr-FR");
+
+  bande();
+  requestAnimationFrame(tour);
+})();
+</script>

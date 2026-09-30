@@ -1,0 +1,1094 @@
+<title>App SwimPay, photo et verre</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Archivo:wdth,wght@62..125,500..900&display=swap">
+<style>
+/* ------------------------------------------------------------------
+   L'onboarding SwimPay, grammaire « Photo et verre » (choix de LO sur la
+   planche du 28/09/2026), titres Archivo condense.
+     - une grande photo dans une carte bord a bord, rayon bas 36px, voile
+       sombre en bas, le titre en capitales pose dessus ;
+     - des champs en verre (blanc 16 %, flou 14px, contour blanc 28 %) ;
+     - une pilule acide sous la photo : l'element acide dominant.
+   Palette stricte : #141414 #434343 #FFFFFF #A2FF01 (+ #909090 derive,
+   + #E5484D reserve aux erreurs). Mono-theme sombre assume.
+   La photo au col bleu des assets est ECARTEE : le bleu sort de la palette.
+   ------------------------------------------------------------------ */
+:root {
+  color-scheme: dark;
+  --fond: #141414;
+  --planche: #0C0C0C;
+  --surface: #1C1C1C;
+  --surface-2: #242424;
+  --trait: #2E2E2E;
+  --gris: #434343;
+  --encre: #FFFFFF;
+  --sourd: #909090;
+  --acide: #A2FF01;
+  --encre-acide: #141414;
+  --erreur: #E5484D;
+  --verre: rgba(255, 255, 255, .16);
+  --verre-bord: rgba(255, 255, 255, .28);
+  --sortie: cubic-bezier(.23, 1, .32, 1);
+  --tiroir: cubic-bezier(.32, .72, 0, 1);
+  --titre: "Archivo", "Outfit", ui-sans-serif, system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--planche); }
+body {
+  margin: 0; color: var(--encre);
+  font-family: "Outfit", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--acide); outline-offset: 2px; }
+
+/* ================= la page autour du telephone ================= */
+.page {
+  max-width: 1080px; margin: 0 auto; padding: 28px 20px 56px;
+  display: grid; grid-template-columns: auto 1fr; gap: 48px; align-items: start;
+}
+.cote { display: grid; gap: 22px; padding-top: 8px; }
+.cote h1 { margin: 0; font-family: var(--titre); font-weight: 900; font-stretch: 72%; letter-spacing: -0.02em; line-height: .95; font-size: clamp(34px, 4.6vw, 52px); text-transform: uppercase; }
+.cote p { margin: 0; color: var(--sourd); max-width: 58ch; }
+.cote p b { color: var(--encre); font-weight: 500; }
+.parcours { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.parcours button {
+  width: 100%; display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: center;
+  padding: 10px 12px; border-radius: 14px; border: 0; background: none; cursor: pointer; text-align: left;
+  color: var(--sourd); transition: background 160ms var(--sortie);
+}
+.parcours button:hover { background: var(--surface); color: var(--encre); }
+.parcours .num { width: 28px; height: 28px; border-radius: 99px; display: grid; place-items: center; font-size: 12px; font-weight: 600; border: 1px solid var(--trait); }
+.parcours .fait .num { background: var(--gris); border-color: var(--gris); color: var(--encre); }
+.parcours .ici { background: var(--surface); color: var(--encre); }
+.parcours .ici .num { background: var(--acide); border-color: var(--acide); color: var(--encre-acide); }
+.parcours .saute { opacity: .45; }
+.parcours small { font-size: 12px; }
+.notes { border-top: 1px solid var(--trait); padding-top: 16px; display: grid; gap: 8px; font-size: 13px; color: var(--sourd); max-width: 58ch; }
+.notes b { color: var(--encre); font-weight: 500; }
+.recommencer { justify-self: start; border: 1px solid var(--trait); background: none; border-radius: 999px; padding: 9px 16px; cursor: pointer; color: var(--encre); }
+.recommencer:active { transform: scale(.97); }
+
+/* ================= le telephone ================= */
+.tel {
+  width: 390px; height: 820px; border-radius: 56px; padding: 10px; flex: none;
+  background: linear-gradient(145deg, #3a3a3a, #111 40%, #2a2a2a);
+  box-shadow: 0 40px 80px -30px rgba(0,0,0,.85), inset 0 0 0 1px #4a4a4a;
+  position: sticky; top: 20px;
+}
+.ecran {
+  position: relative; width: 100%; height: 100%; border-radius: 46px; overflow: hidden;
+  background: var(--fond); isolation: isolate;
+}
+.ecran::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: url("grain.png") repeat; background-size: 112px; opacity: .10; mix-blend-mode: overlay;
+}
+.barre {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 30; height: 50px;
+  display: flex; align-items: center; justify-content: space-between; padding: 4px 30px 0;
+  font-size: 14px; font-weight: 600; color: var(--encre); pointer-events: none;
+}
+.barre::after { content: ""; position: absolute; left: 50%; top: 11px; transform: translateX(-50%); width: 110px; height: 32px; border-radius: 99px; background: #000; }
+.barre .icones { display: flex; gap: 5px; align-items: center; }
+.barre .icones i { display: block; width: 17px; height: 10px; border-radius: 3px; border: 1.5px solid currentColor; }
+.indicateur { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 130px; height: 5px; border-radius: 9px; background: var(--encre); z-index: 30; pointer-events: none; }
+
+/* un ecran du parcours */
+.vue {
+  position: absolute; inset: 0; display: flex; flex-direction: column; z-index: 1;
+  animation: entre 360ms var(--sortie) both;
+}
+.vue.retour { animation-name: entre-retour; }
+@keyframes entre { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+@keyframes entre-retour { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+
+/* la carte photo (constante de la grammaire) */
+.photo {
+  position: relative; flex: none; border-radius: 0 0 36px 36px; overflow: hidden;
+  transition: height 420ms var(--tiroir);
+}
+.photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,20,20,.28) 0%, rgba(20,20,20,0) 26%, rgba(20,20,20,0) 42%, rgba(20,20,20,.80) 100%); }
+.photo .dessus { position: absolute; left: 18px; right: 18px; bottom: 18px; z-index: 2; display: flex; flex-direction: column; gap: 12px; }
+.photo .haut { position: absolute; top: 54px; left: 16px; right: 16px; z-index: 3; display: flex; align-items: center; gap: 12px; }
+.titre {
+  margin: 0; font-family: var(--titre); font-weight: 900; font-stretch: 72%;
+  letter-spacing: -0.02em; line-height: .9; text-transform: uppercase; text-wrap: balance; color: var(--encre);
+}
+.surtitre { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.78); }
+
+/* progression facon « stories » + retour */
+.segments { flex: 1; display: flex; gap: 4px; }
+.segments span { flex: 1; height: 3px; border-radius: 9px; background: rgba(255,255,255,.28); overflow: hidden; }
+.segments span.fait { background: var(--encre); }
+.segments span.ici { background: linear-gradient(90deg, var(--encre) 50%, rgba(255,255,255,.28) 50%); }
+.rond-verre {
+  width: 40px; height: 40px; border-radius: 99px; flex: none; display: grid; place-items: center; cursor: pointer;
+  background: rgba(20,20,20,.35); border: 1px solid var(--verre-bord); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  font-size: 18px;
+}
+.rond-verre:active { transform: scale(.94); }
+
+/* le verre */
+.verre {
+  height: 54px; border-radius: 999px; display: flex; align-items: center; gap: 10px; padding: 0 20px;
+  background: var(--verre); border: 1px solid var(--verre-bord);
+  backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+.verre input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font-size: 17px; letter-spacing: .02em; }
+.verre input::placeholder { color: rgba(255,255,255,.55); }
+.verre .indic { color: rgba(255,255,255,.72); font-weight: 500; }
+.verre:focus-within { border-color: rgba(255,255,255,.6); }
+.verre.erreur { border-color: var(--erreur); }
+
+.segment { display: flex; padding: 4px; gap: 4px; border-radius: 999px; background: rgba(20,20,20,.55); align-self: flex-start; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.12); }
+.segment button { border: 0; border-radius: 999px; padding: 8px 16px; font-size: 12px; font-weight: 700; letter-spacing: .05em; background: none; cursor: pointer; transition: background 160ms, color 160ms; }
+.segment button[aria-pressed="true"] { background: var(--acide); color: var(--encre-acide); }
+
+/* le bas de l'ecran */
+.bas { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 18px 18px 30px; min-height: 0; }
+.bas.defile { overflow-y: auto; scrollbar-width: none; }
+.bas.defile::-webkit-scrollbar { display: none; }
+.pousse { flex: 1; }
+.pilule {
+  flex: none; height: 56px; border-radius: 999px; border: 0; cursor: pointer; font-weight: 600; font-size: 16px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: transform 140ms var(--sortie), opacity 160ms;
+}
+.pilule:active { transform: scale(.97); }
+.pilule.acide { background: var(--acide); color: var(--encre-acide); }
+.pilule.contour { background: none; border: 1px solid var(--gris); }
+.pilule:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+.lien { background: none; border: 0; color: var(--sourd); font-size: 14px; cursor: pointer; padding: 6px; align-self: center; }
+.lien:hover { color: var(--encre); }
+.mention { margin: 0; font-size: 11.5px; color: var(--sourd); text-align: center; line-height: 1.45; }
+.mention u { color: var(--encre); text-decoration: none; }
+.aide { margin: 0; font-size: 13px; color: var(--sourd); }
+.aide b { color: var(--encre); font-weight: 500; }
+.message-erreur { margin: 0; font-size: 13px; color: var(--erreur); min-height: 1.2em; }
+
+/* cases du code, en verre sur le sol sombre */
+.cases { display: grid; gap: 8px; }
+.cases .case {
+  height: 60px; border-radius: 18px; display: grid; place-items: center; font-size: 24px; font-weight: 600;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
+  transition: border-color 160ms, background 160ms;
+}
+.cases .case.vide { color: rgba(255,255,255,.3); }
+.cases .case.ici { border-color: var(--encre); }
+.cases.erreur .case { border-color: var(--erreur); animation: secoue 320ms var(--sortie); }
+.cases.pin .case { font-size: 30px; }
+@keyframes secoue { 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+
+.clavier { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 16px; }
+.clavier button {
+  height: 58px; border-radius: 999px; border: 1px solid var(--trait); background: none; cursor: pointer;
+  font-size: 24px; transition: background 120ms, transform 120ms var(--sortie);
+}
+.clavier button:active { transform: scale(.94); background: var(--surface-2); }
+.clavier button.muet { border-color: transparent; font-size: 15px; color: var(--sourd); }
+
+/* options (profil, regimes, pieces) */
+.options { display: grid; gap: 10px; }
+.option {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center; text-align: left;
+  padding: 16px 18px; border-radius: 24px; cursor: pointer; border: 1px solid var(--trait); background: var(--surface);
+  transition: border-color 160ms, background 160ms, transform 140ms var(--sortie);
+}
+.option:active { transform: scale(.98); }
+.option b { font-weight: 600; font-size: 16px; }
+.option span { grid-column: 1; color: var(--sourd); font-size: 13px; line-height: 1.35; }
+.option .prix { grid-row: 1 / span 2; grid-column: 2; font-size: 13px; font-weight: 600; color: var(--encre); text-align: right; line-height: 1.2; }
+.option .prix small { display: block; color: var(--sourd); font-weight: 400; }
+.option[aria-checked="true"] { border-color: var(--encre); background: var(--surface-2); }
+.puces { display: flex; flex-wrap: wrap; gap: 8px; }
+.puce { border: 1px solid var(--trait); background: none; border-radius: 999px; padding: 9px 15px; cursor: pointer; font-size: 14px; }
+.puce[aria-checked="true"] { background: var(--encre); color: var(--fond); border-color: var(--encre); font-weight: 600; }
+
+/* comptes relies */
+.ligne { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--trait); }
+.ligne .point { width: 10px; height: 10px; border-radius: 99px; flex: none; }
+.ligne .nom { flex: 1; min-width: 0; font-weight: 500; }
+.ligne .nom small { display: block; color: var(--sourd); font-weight: 400; font-size: 12.5px; }
+.ligne .action { border: 1px solid var(--gris); background: none; border-radius: 999px; padding: 7px 14px; cursor: pointer; font-size: 13px; font-weight: 600; flex: none; }
+.ligne .action.relie { border-color: transparent; background: var(--surface-2); color: var(--encre); }
+.ligne .action.relie::before { content: "✓ "; color: var(--acide); }
+.p-orange { background: #FF7900; } .p-mtn { background: #FFCB05; } .p-moov { background: #0066B3; } .p-wave { background: #1DC4FF; } .p-banque { background: var(--encre); }
+.groupe-titre { margin: 8px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--sourd); }
+
+/* feuille (panneau qui monte, dans le telephone) */
+.voile { position: absolute; inset: 0; z-index: 20; background: rgba(0,0,0,.55); opacity: 0; transition: opacity 240ms var(--sortie); }
+.voile.ouvert { opacity: 1; }
+.feuille {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--surface);
+  border-radius: 32px 32px 0 0; border-top: 1px solid var(--trait);
+  padding: 10px 18px 34px; display: flex; flex-direction: column; gap: 12px;
+  transform: translateY(105%); transition: transform 300ms var(--tiroir);
+}
+.feuille.ouverte { transform: none; }
+.feuille .poignee { width: 40px; height: 5px; border-radius: 9px; background: var(--gris); align-self: center; margin-bottom: 4px; }
+.feuille h3 { margin: 0; font-size: 20px; font-weight: 600; }
+.champ { display: grid; gap: 6px; }
+.champ label { font-size: 13px; color: var(--sourd); }
+.saisie {
+  height: 52px; border-radius: 16px; border: 1px solid var(--trait); background: var(--fond); padding: 0 16px;
+  font-size: 16px; outline: 0; width: 100%; letter-spacing: .02em;
+}
+.saisie:focus { border-color: var(--sourd); }
+.saisie.erreur { border-color: var(--erreur); }
+
+/* piece d'identite */
+.faces { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.faces.une { grid-template-columns: 1fr; }
+.face {
+  position: relative; aspect-ratio: 1.58; border-radius: 20px; border: 1.5px dashed var(--gris); background: var(--surface);
+  display: grid; place-items: center; text-align: center; cursor: pointer; overflow: hidden; font-size: 13px; color: var(--sourd);
+}
+.face b { display: block; color: var(--encre); font-weight: 600; font-size: 14px; }
+.face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.face.pleine { border-style: solid; border-color: var(--encre); }
+.face.pleine::after { content: "✓"; position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 99px; background: var(--acide); color: var(--encre-acide); display: grid; place-items: center; font-size: 13px; font-weight: 700; }
+.face input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+/* la consequence fiscale : l'etat se lit dans la forme */
+.consequence { border-radius: 20px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--trait); font-size: 13px; color: var(--sourd); }
+.consequence b { color: var(--encre); font-weight: 600; }
+.consequence .code { display: inline-block; font-weight: 700; color: var(--encre-acide); background: var(--encre); border-radius: 6px; padding: 1px 7px; margin-right: 6px; font-size: 12px; letter-spacing: .04em; }
+
+/* interrupteur */
+.interrupteur { width: 50px; height: 30px; border-radius: 99px; border: 0; cursor: pointer; position: relative; flex: none; background: var(--gris); transition: background 180ms var(--sortie); }
+.interrupteur::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 99px; background: var(--encre); transition: transform 220ms var(--sortie); }
+.interrupteur[aria-pressed="true"] { background: var(--acide); }
+.interrupteur[aria-pressed="true"]::after { transform: translateX(20px); background: var(--fond); }
+
+/* recapitulatif final */
+.recap { display: grid; gap: 0; background: var(--verre); border: 1px solid var(--verre-bord); border-radius: 26px; padding: 6px 18px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.recap div { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,.14); font-size: 14px; }
+.recap div:last-child { border-bottom: 0; }
+.recap span { color: rgba(255,255,255,.72); }
+.recap b { font-weight: 600; text-align: right; }
+.echelle { display: flex; gap: 4px; }
+.echelle span { flex: 1; height: 4px; border-radius: 9px; background: rgba(255,255,255,.22); }
+.echelle span.fait { background: var(--acide); }
+.echelle-lib { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,.6); margin-top: 6px; }
+.echelle-lib b { color: var(--encre); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0ms !important; transition-duration: 0ms !important; }
+}
+@media (max-width: 900px) {
+  .page { grid-template-columns: 1fr; justify-items: center; gap: 28px; }
+  .cote { order: -1; }
+  .tel { position: relative; top: 0; }
+}
+@media (max-width: 440px) {
+  .page { padding-inline: 16px; }
+  .tel { width: 100%; height: 780px; border-radius: 40px; padding: 7px; }
+  .ecran { border-radius: 34px; }
+}
+</style>
+<style>
+/* ================= le hero de l'app : la couleur, pas la photo =================
+   Decision de LO (28/09/2026) : la personne de l'onboarding n'est pas le hero
+   de l'app. On revient au hero deux tons valide le 28/08 : rampe acide, voile
+   radial qui donne le volume, grain, encre #141414 (8,02:1 sur l'arret le plus
+   sombre, mesure a l'epoque). Tout le reste de l'ecran reste noir.
+   L'acide dominant de chaque ecran est donc le HERO : les boutons principaux
+   passent en blanc pour ne pas lui faire concurrence. */
+:root { --grad-hero: linear-gradient(158deg, #6FBF00 0%, #8FE500 16%, #A2FF01 42%, #BFFF2E 68%, #E2FF8C 92%, #F2FFC4 100%);
+  --voile-hero: radial-gradient(118% 80% at 86% 2%, rgba(255,255,255,.30), transparent 62%), radial-gradient(92% 72% at 6% 98%, rgba(60,120,0,.30), transparent 58%); }
+.photo.hero-acide { background: var(--grad-hero); color: var(--encre-acide); }
+.photo.hero-acide::after { background: var(--voile-hero); }
+.photo.hero-acide::before { content: ""; position: absolute; inset: 0; background: url("grain.png") repeat; background-size: 112px; opacity: .22; mix-blend-mode: multiply; pointer-events: none; }
+.hero-acide .titre { color: var(--encre-acide); }
+.hero-acide .surtitre { color: rgba(20,20,20,.66); }
+.hero-acide .rond-verre, .hero-acide .avatar { background: rgba(20,20,20,.08); border-color: rgba(20,20,20,.18); color: var(--encre-acide); }
+.hero-acide .salut { text-shadow: none; color: var(--encre-acide); }
+.hero-acide .plaque { background: rgba(255,255,255,.36); border-color: rgba(255,255,255,.55); color: var(--encre-acide); }
+.hero-acide .plaque .ligne-plaque, .hero-acide .oeil { color: rgba(20,20,20,.72); }
+.hero-acide .recap { background: rgba(255,255,255,.36); border-color: rgba(255,255,255,.55); }
+.hero-acide .recap div { border-bottom-color: rgba(20,20,20,.12); }
+.hero-acide .recap span { color: rgba(20,20,20,.66); }
+.hero-acide .recap b { color: var(--encre-acide); }
+.hero-acide .verre { background: rgba(255,255,255,.36); border-color: rgba(255,255,255,.6); color: var(--encre-acide); }
+.hero-acide .verre input { color: var(--encre-acide); }
+.hero-acide .verre input::placeholder { color: rgba(20,20,20,.5); }
+.hero-acide .verre .indic { color: rgba(20,20,20,.66); }
+.ecran.app .barre { color: var(--encre-acide); }
+.pilule.blanche { background: var(--encre); color: var(--fond); }
+
+/* le choix de la cible : deux grandes options, chacune avec ses sous-options */
+.cibles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cible { border: 1px solid var(--trait); background: var(--surface); border-radius: 26px; padding: 18px 16px; text-align: left; cursor: pointer; display: grid; gap: 14px; min-height: 150px; align-content: space-between; transition: transform 140ms var(--sortie), border-color 160ms; }
+.cible:active { transform: scale(.97); }
+.cible[aria-checked="true"] { border-color: var(--encre); background: var(--surface-2); }
+.cible .ico { width: 44px; height: 44px; border-radius: 99px; display: grid; place-items: center; background: var(--surface-2); }
+.cible .ico svg { width: 22px; height: 22px; }
+.cible b { display: block; font-size: 17px; font-weight: 600; }
+.cible small { color: var(--sourd); font-size: 12.5px; line-height: 1.35; display: block; margin-top: 2px; }
+.sous { display: grid; gap: 8px; }
+.sous button { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-radius: 18px; border: 1px solid var(--trait); background: none; cursor: pointer; text-align: left; }
+.sous button[aria-checked="true"] { border-color: var(--encre); background: var(--surface-2); }
+.sous .point { width: 10px; height: 10px; border-radius: 99px; flex: none; }
+.sous .nom { flex: 1; font-weight: 500; }
+.sous .nom small { display: block; color: var(--sourd); font-weight: 400; font-size: 12.5px; }
+.verif { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 18px; background: var(--surface); border: 1px solid var(--trait); font-size: 14px; }
+.verif .rond { width: 30px; height: 30px; border-radius: 99px; flex: none; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+.verif.ok .rond { background: var(--acide); color: var(--encre-acide); }
+.verif.inconnu .rond { background: var(--surface-2); color: var(--sourd); }
+.verif small { display: block; color: var(--sourd); font-size: 12px; }
+.attente { display: grid; justify-items: center; gap: 12px; text-align: center; padding: 18px; border-radius: 24px; background: var(--surface); border: 1px solid var(--trait); }
+.attente .tourne { width: 26px; height: 26px; }
+
+/* ================= complements de l'app (meme grammaire que l'onboarding) ================= */
+.vue.avec-nav .bas { padding-bottom: 104px; }
+.vue.sans-anim { animation: none; }
+.nav {
+  position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 15;
+  display: flex; gap: 6px; padding: 6px; border-radius: 999px;
+  background: rgba(28,28,28,.92); border: 1px solid var(--trait); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.nav button { width: 54px; height: 54px; border-radius: 99px; border: 0; background: none; cursor: pointer; display: grid; place-items: center; color: var(--sourd); transition: background 160ms, color 160ms; }
+.nav button[aria-current="page"] { background: var(--acide); color: var(--encre-acide); }
+.nav svg { width: 22px; height: 22px; }
+
+.plaque {
+  border-radius: 28px; padding: 16px 18px; display: grid; gap: 4px;
+  background: var(--verre); border: 1px solid var(--verre-bord);
+  backdrop-filter: blur(16px) saturate(1.2); -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+.plaque .montant { font-family: var(--titre); font-weight: 900; font-stretch: 72%; letter-spacing: -0.02em; line-height: .95; font-size: 56px; }
+.plaque .montant small { font-size: 28px; }
+.plaque .ligne-plaque { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: rgba(255,255,255,.8); }
+.oeil { border: 0; background: none; cursor: pointer; color: rgba(255,255,255,.8); font-size: 13px; padding: 4px 0; }
+.photo .haut .avatar { width: 40px; height: 40px; border-radius: 99px; display: grid; place-items: center; font-weight: 700; font-size: 13px; background: rgba(20,20,20,.35); border: 1px solid var(--verre-bord); backdrop-filter: blur(12px); }
+.photo .haut .salut { flex: 1; font-size: 14px; line-height: 1.2; text-shadow: 0 1px 8px rgba(0,0,0,.25); }
+.photo .haut .salut small { display: block; font-size: 12px; opacity: .8; }
+
+.actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.action-ronde { display: grid; justify-items: center; gap: 8px; border: 0; background: none; cursor: pointer; font-size: 13px; color: var(--encre); }
+.action-ronde span { width: 60px; height: 60px; border-radius: 99px; display: grid; place-items: center; border: 1px solid var(--gris); font-size: 22px; transition: transform 140ms var(--sortie); }
+.action-ronde:active span { transform: scale(.94); }
+.action-ronde.acide span { background: var(--acide); border-color: var(--acide); color: var(--encre-acide); }
+.entete-liste { display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px; }
+.entete-liste h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.entete-liste button { border: 0; background: none; color: var(--sourd); cursor: pointer; font-size: 13px; }
+
+.op { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--trait); width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; cursor: pointer; text-align: left; }
+.op .ico { width: 42px; height: 42px; border-radius: 99px; flex: none; display: grid; place-items: center; background: var(--surface-2); font-size: 15px; font-weight: 700; }
+.op .nom { flex: 1; min-width: 0; font-weight: 500; }
+.op .nom small { display: block; color: var(--sourd); font-weight: 400; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.op .val { text-align: right; font-weight: 600; white-space: nowrap; }
+.op .val small { display: block; color: var(--sourd); font-weight: 400; font-size: 12px; }
+.op .val.entree { color: var(--acide); }
+.badge-fne { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; border: 1px solid var(--gris); border-radius: 6px; padding: 0 5px; margin-left: 4px; color: var(--encre); vertical-align: 1px; }
+.jour { margin: 14px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--sourd); }
+
+/* saisie d'un montant */
+.montant-saisi { text-align: center; font-family: var(--titre); font-weight: 900; font-stretch: 72%; letter-spacing: -0.02em; font-size: 64px; line-height: 1; margin: 4px 0 0; }
+.montant-saisi.vide { color: var(--gris); }
+.montant-saisi small { font-size: 30px; }
+.frais-ligne { text-align: center; font-size: 13px; color: var(--sourd); min-height: 1.3em; margin: 0; }
+.frais-ligne b { color: var(--encre); font-weight: 500; }
+.clavier.compact button { height: 52px; }
+
+.recap-sombre { border: 1px solid var(--trait); border-radius: 24px; padding: 4px 18px; background: var(--surface); }
+.recap-sombre div { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--trait); font-size: 14px; }
+.recap-sombre div:last-child { border-bottom: 0; }
+.recap-sombre span { color: var(--sourd); }
+.recap-sombre b { font-weight: 600; text-align: right; }
+.recap-sombre .total b { font-size: 18px; }
+
+/* QR de maquette */
+.qr-carte { background: var(--encre); color: var(--fond); border-radius: 28px; padding: 18px; display: grid; justify-items: center; gap: 10px; }
+.qr-carte svg { width: 190px; height: 190px; }
+.qr-carte .qr-montant { font-family: var(--titre); font-weight: 900; font-stretch: 72%; font-size: 40px; line-height: 1; letter-spacing: -0.02em; }
+.qr-carte small { color: #555; font-size: 12px; text-align: center; }
+.lien-copie { display: flex; align-items: center; gap: 10px; border: 1px solid var(--trait); border-radius: 999px; padding: 6px 6px 6px 16px; }
+.lien-copie span { flex: 1; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lien-copie button { border: 0; border-radius: 999px; padding: 9px 14px; background: var(--surface-2); cursor: pointer; font-size: 13px; font-weight: 600; }
+.demo { border: 1px dashed var(--gris); background: none; border-radius: 999px; height: 46px; cursor: pointer; color: var(--sourd); font-size: 13px; }
+
+/* facture certifiee */
+.statut-fne { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 22px; background: var(--surface); border: 1px solid var(--trait); }
+.statut-fne .rond { width: 36px; height: 36px; border-radius: 99px; display: grid; place-items: center; flex: none; background: var(--surface-2); }
+.statut-fne.certifiee .rond { background: var(--acide); color: var(--encre-acide); font-weight: 700; }
+.statut-fne .txt { flex: 1; font-size: 14px; }
+.statut-fne .txt small { display: block; color: var(--sourd); font-size: 12px; }
+.tourne { width: 16px; height: 16px; border-radius: 99px; border: 2px solid var(--gris); border-top-color: var(--encre); animation: tourne 700ms linear infinite; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+
+.facture { background: var(--encre); color: var(--fond); border-radius: 22px; padding: 18px; display: grid; gap: 12px; font-size: 13px; }
+.facture .ent { display: flex; justify-content: space-between; gap: 12px; }
+.facture .ent b { font-size: 15px; display: block; }
+.facture .gris { color: #5c5c5c; }
+.facture table { width: 100%; border-collapse: collapse; }
+.facture th { text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #5c5c5c; padding: 6px 0; border-bottom: 1px solid #d9d9d9; }
+.facture td { padding: 8px 0; border-bottom: 1px solid #ececec; vertical-align: top; }
+.facture td:last-child, .facture th:last-child { text-align: right; }
+.facture .tot { display: grid; gap: 4px; }
+.facture .tot div { display: flex; justify-content: space-between; }
+.facture .tot .grand { font-size: 17px; font-weight: 700; border-top: 1px solid #141414; padding-top: 8px; margin-top: 4px; }
+.facture .sticker { display: flex; gap: 12px; align-items: center; border-top: 1px dashed #bdbdbd; padding-top: 12px; }
+.facture .sticker svg { width: 76px; height: 76px; flex: none; }
+.facture .sticker b { display: block; font-size: 12px; }
+.facture .ref { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; word-break: break-all; }
+.mention-tva { font-weight: 700; font-size: 12px; }
+
+.echelle-sombre .echelle span { background: var(--gris); }
+.echelle-sombre .echelle span.fait { background: var(--acide); }
+.echelle-sombre .echelle-lib { color: var(--sourd); }
+</style>
+
+<div class="page">
+  <div class="tel"><div class="ecran" id="ecran">
+    <div class="barre"><span>9:41</span><span class="icones"><i></i><i></i></span></div>
+    <div id="vue-hote"></div>
+    <nav class="nav" id="nav" aria-label="Navigation principale"></nav>
+    <div class="voile" id="voile" hidden></div>
+    <div class="feuille" id="feuille" role="dialog" aria-modal="true" aria-labelledby="feuille-titre"></div>
+    <div class="indicateur"></div>
+  </div></div>
+
+  <aside class="cote">
+    <h1>L'app SwimPay</h1>
+    <p>Les écrans qui suivent l'onboarding, pour <b>Boutique Awa</b>, profil <b>Commerçant</b> au régime <b>TEE</b>. Tout part du <b>compte SwimPay</b> : on le recharge depuis ses Mobile Money ou sa banque, on envoie vers <b>Mobile Money</b> ou <b>Banque</b>, et chaque cible détaille ses sous-options. Par où passe l'argent ne s'affiche jamais.</p>
+    <ol class="parcours" id="parcours"></ol>
+    <div class="notes">
+      <div><b>Réel, tiré du Cerveau et des docs DGI :</b> les frais par nature de la grille (recharge gratuite, vers banque 1,5 %, encaissement 1 %), les préfixes des lignes, le RIB à 24 caractères, le format de la référence FNE, la mention « TVA non applicable » d'un régime TEE.</div><div><b>À décider :</b> les frais d'un envoi vers Mobile Money (1 % plafonné à 500 F dans la grille) avec l'arrivée du PI-SPI le 30 septembre.</div>
+      <div><b>Exemples de maquette :</b> le solde, les noms, l'annuaire, les montants, les opérations et le QR, qui ne se scanne pas.</div>
+      <div><b>Pour essayer :</b> envoie vers MTN au 05 44 90 12 73 pour voir le nom vérifié, puis vers un numéro inconnu pour voir l'avertissement. Un 07 refusé sur MTN montre l'erreur de préfixe. Le code secret de la maquette est libre.</div>
+    </div>
+    <button class="recommencer" id="recommencer" type="button">Réinitialiser l'app</button>
+  </aside>
+</div>
+
+<script>
+/* ============================ donnees de maquette ============================
+   Le modele (LO, 28/09/2026, aligne sur docs/pivot/17 et le Cerveau) :
+   l'utilisateur voit SON COMPTE SwimPay. Il le recharge depuis ses Mobile
+   Money et ses banques, il envoie vers n'importe quel Mobile Money ou
+   n'importe quelle banque. Par ou l'argent passe en cuisine (EME, comptes
+   business, reserves, reequilibrage) ne s'affiche JAMAIS. */
+const NBSP = " ";
+const F = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, NBSP) + NBSP + "F";
+const chiffres = (s) => s.replace(/\D/g, "");
+const formateTel = (s) => chiffres(s).slice(0, 10).replace(/(\d{2})(?=\d)/g, "$1 ");
+const echappe = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+const RESEAUX = {
+  wave:   { nom: "Wave",         point: "#1DC4FF", prefixe: null, aide: "Sur n'importe quel numéro" },
+  orange: { nom: "Orange Money", point: "#FF7900", prefixe: "07", aide: "Numéros en 07" },
+  mtn:    { nom: "MTN MoMo",     point: "#FFCB05", prefixe: "05", aide: "Numéros en 05" },
+  moov:   { nom: "Moov Money",   point: "#0066B3", prefixe: "01", aide: "Numéros en 01" },
+};
+/* Les frais suivent la NATURE de l'operation, jamais le chemin (grille.ts) :
+   recharger = gratuit (« la faire payer decouragerait l'alimentation des
+   soldes, dont tout le netting depend ») ; vers un Mobile Money = la ligne
+   transfert de la grille (1 %, plafond 500 F) ; vers une banque = 1,5 %.
+   Le montant exact des frais vers Mobile Money est une decision de LO a
+   reprendre avec le PI-SPI (interop obligatoire au 30/09/2026). */
+const GRILLE = { recharge: { bp: 0 }, vers_mobile: { bp: 100, cap: 500 }, vers_banque: { bp: 150 }, encaissement: { bp: 100 } };
+const frais = (nature, montant) => { const g = GRILLE[nature]; const f = Math.round(montant * g.bp / 10000); return g.cap ? Math.min(f, g.cap) : f; };
+
+const MARCHAND = { nom: "Boutique Awa", ncc: "2500736C", regime: "TEE", tel: "07 58 21 04 96" };
+/* Les sources de recharge de l'utilisatrice : ce qu'elle a relie a l'onboarding */
+const SOURCES = [
+  { id: "om",   type: "mobile", reseau: "orange", lib: "Orange Money", det: "07 58 21 04 96" },
+  { id: "wave", type: "mobile", reseau: "wave",   lib: "Wave",         det: "07 58 21 04 96" },
+  { id: "bq",   type: "banque", lib: "Compte bancaire", det: "RIB CI008 ···· 23" },
+];
+/* L'annuaire (le moat) : un numero connu rend un nom verifie avant l'envoi */
+const ANNUAIRE = {
+  "0544901273": "Aya Koné", "0708336120": "Yao Kouassi", "0102674518": "Mariam Traoré", "0777051848": "Koffi N'Guessan",
+};
+const RECENTS = [
+  { nom: "Aya Koné", tel: "05 44 90 12 73", reseau: "mtn" },
+  { nom: "Yao Kouassi", tel: "07 08 33 61 20", reseau: "orange" },
+  { nom: "Mariam Traoré", tel: "01 02 67 45 18", reseau: "wave" },
+];
+
+const envoiNeuf = () => ({ cible: null, reseau: null, tel: "", nom: "", banqueMode: null, rib: "", titulaire: "", montant: "" });
+const neuf = () => ({
+  ecran: "accueil", pile: [], masque: false,
+  solde: 148350,
+  ops: [
+    { id: 1, jour: "Aujourd'hui", heure: "10:42", type: "entree", nom: "Vente comptoir", det: "Payé par Wave · 05 44 90 12 73", montant: 12500, frais: 125, fne: "2500736C26000000141", lignes: [["Pagne wax 6 yards", 1, 12500]] },
+    { id: 2, jour: "Aujourd'hui", heure: "09:15", type: "sortie", nom: "Aya Koné", det: "Vers MTN MoMo · 05 44 90 12 73", montant: 5000, frais: 50 },
+    { id: 3, jour: "Aujourd'hui", heure: "08:02", type: "recharge", nom: "Recharge", det: "Depuis Orange Money", montant: 20000, frais: 0 },
+    { id: 4, jour: "Hier", heure: "18:03", type: "entree", nom: "Vente cash", det: "Espèces, enregistrée", montant: 8000, frais: 0, fne: "2500736C26000000140", lignes: [["Sac de riz 5 kg", 2, 4000]] },
+    { id: 5, jour: "Hier", heure: "12:30", type: "entree", nom: "Commande en ligne", det: "Payé par Orange Money · 07 08 33 61 20", montant: 27000, frais: 270, fne: "2500736C26000000139", lignes: [["Huile 5 L", 3, 9000]] },
+    { id: 6, jour: "Lundi", heure: "16:20", type: "sortie", nom: "Fournisseur Traoré", det: "Vers banque · RIB CI034 ···· 07", montant: 150000, frais: 2250 },
+  ],
+  envoi: envoiNeuf(),
+  recharge: { source: null, montant: "" },
+  vente: { montant: "", motif: "", mode: "qr" },
+  pin: [], seq: 142,
+});
+let E = neuf();
+let prochainId = 7;
+
+/* ============================ navigation ============================ */
+const RACINES = ["accueil", "activite", "factures", "profil"];
+let sens = "avant";
+function aller(ecran, opts = {}) {
+  if (RACINES.includes(ecran)) E.pile = [];
+  else if (!opts.remplacer) E.pile.push(E.ecran);
+  sens = opts.retour ? "retour" : "avant";
+  E.ecran = ecran; fermerFeuille(); rendre();
+}
+function retour() { const p = E.pile.pop() || "accueil"; sens = "retour"; E.ecran = p; fermerFeuille(); rendre(); }
+
+/* ============================ briques ============================ */
+function carte(hauteur, contenu, options = {}) {
+  const haut = options.haut !== undefined ? options.haut
+    : "<button class='rond-verre' data-retour aria-label='Retour'>←</button><div style='flex:1'></div>";
+  return "<div class='photo hero-acide' style='height:" + hauteur + "'>" +
+    "<div class='haut'>" + haut + "</div><div class='dessus'>" + contenu + "</div></div>";
+}
+const titre = (t, taille, sur = "") => (sur ? "<span class='surtitre'>" + sur + "</span>" : "") + "<h1 class='titre' style='font-size:" + taille + "px'>" + t + "</h1>";
+const grandMontant = (m) => m ? F(m).replace(NBSP + "F", "<small>" + NBSP + "F</small>") : "0<small>" + NBSP + "F</small>";
+function clavier(extra, compact) {
+  return "<div class='clavier" + (compact ? " compact" : "") + "'>" + ["1","2","3","4","5","6","7","8","9", extra, "0", "effacer"].map((t) =>
+    t === "effacer" ? "<button class='muet' data-touche='effacer' aria-label='Effacer'>⌫</button>"
+    : t === "" ? "<span></span>"
+    : t === "000" ? "<button class='muet' data-touche='000'>000</button>"
+    : "<button data-touche='" + t + "'>" + t + "</button>").join("") + "</div>";
+}
+function cases(n, valeurs) {
+  return "<div class='cases pin' style='grid-template-columns:repeat(" + n + ",1fr)'>" +
+    Array.from({ length: n }, (_, i) => "<span class='case" + (valeurs[i] === undefined ? " vide" : "") + (i === valeurs.length ? " ici" : "") + "'>" + (valeurs[i] === undefined ? "•" : "●") + "</span>").join("") + "</div>";
+}
+const ICO = {
+  mobile: "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8'><rect x='7' y='2.5' width='10' height='19' rx='2.5'/><path d='M11 18.5h2'/></svg>",
+  banque: "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8'><path d='M3 9.5 12 4l9 5.5'/><path d='M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3.5 20.5h17'/></svg>",
+};
+function opLigne(o) {
+  const initiales = o.nom.split(" ").map((m) => m[0]).join("").slice(0, 2).toUpperCase();
+  const signe = o.type === "sortie" ? "−" : "+";
+  const ico = o.type === "entree" ? "↙" : o.type === "recharge" ? "+" : initiales;
+  return "<button class='op' data-op='" + o.id + "'><span class='ico'>" + ico + "</span>" +
+    "<span class='nom'>" + echappe(o.nom) + (o.fne ? "<span class='badge-fne'>FNE</span>" : "") + "<small>" + echappe(o.det) + "</small></span>" +
+    "<span class='val " + (o.type === "sortie" ? "" : "entree") + "'>" + signe + F(o.montant) + "<small>" + o.heure + "</small></span></button>";
+}
+function qrSvg(graine) {
+  /* motif deterministe : un QR de MAQUETTE, qui ne se scanne pas */
+  let x = graine * 9301 + 49297, cellules = "";
+  const n = 25, marque = (cx, cy) => "<rect x='" + cx + "' y='" + cy + "' width='7' height='7' fill='none' stroke='currentColor' stroke-width='1'/><rect x='" + (cx + 2) + "' y='" + (cy + 2) + "' width='3' height='3'/>";
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const coin = (i < 8 && j < 8) || (i < 8 && j > n - 9) || (i > n - 9 && j < 8);
+    x = (x * 1103515245 + 12345) & 0x7fffffff;
+    if (!coin && x % 100 < 47) cellules += "<rect x='" + j + "' y='" + i + "' width='1' height='1'/>";
+  }
+  return "<svg viewBox='-1 -1 27 27' fill='currentColor' aria-hidden='true'>" + cellules + marque(0.5, 0.5) + marque(17.5, 0.5) + marque(0.5, 17.5) + "</svg>";
+}
+/* le libelle de la cible choisie, pour les recaps */
+function libCible() {
+  const e = E.envoi;
+  if (e.cible === "mobile") return RESEAUX[e.reseau].nom + " · " + e.tel;
+  return e.banqueMode === "mien" ? "Mon compte bancaire · " + SOURCES[2].det : "Banque · RIB " + e.rib.slice(0, 5) + " ···· " + e.rib.slice(-2);
+}
+const natureEnvoi = () => E.envoi.cible === "mobile" ? "vers_mobile" : "vers_banque";
+
+/* ============================ ecrans ============================ */
+const ECRANS = {
+  accueil() {
+    return carte("48%",
+      "<div class='plaque'><div class='ligne-plaque'><span>Solde SwimPay</span><button class='oeil' data-oeil>" + (E.masque ? "Afficher" : "Masquer") + "</button></div>" +
+      "<div class='montant'>" + (E.masque ? "•••••" : grandMontant(E.solde)) + "</div>" +
+      "<div class='ligne-plaque'><span>Vers tous les Mobile Money et banques</span></div></div>",
+      { haut: "<span class='avatar'>BA</span><span class='salut'>Bonjour Awa<small>" + MARCHAND.nom + "</small></span><button class='rond-verre' aria-label='Notifications'><svg viewBox='0 0 24 24' width='18' height='18' fill='none' stroke='currentColor' stroke-width='1.8'><path d='M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z'/><path d='M10 20a2 2 0 0 0 4 0'/></svg></button>" }) +
+      "<div class='bas defile'>" +
+        "<div class='actions' style='grid-template-columns:repeat(4,1fr)'>" +
+          "<button class='action-ronde' data-aller='recharger'><span>+</span>Recharger</button>" +
+          "<button class='action-ronde' data-aller='envoyer'><span>↗</span>Envoyer</button>" +
+          "<button class='action-ronde' data-aller='encaisser'><span style='background:var(--encre);color:var(--fond);border-color:var(--encre)'>↙</span>Encaisser</button>" +
+          "<button class='action-ronde' data-aller='vente-cash'><span>F</span>Vente cash</button>" +
+        "</div>" +
+        "<div class='entete-liste'><h2>Dernières opérations</h2><button data-aller='activite'>Tout voir</button></div>" +
+        "<div>" + E.ops.slice(0, 3).map(opLigne).join("") + "</div>" +
+      "</div>";
+  },
+
+  /* ---------- envoyer : deux cibles, et leurs sous-options ---------- */
+  envoyer() {
+    return carte("28%", titre("Envoyer", 50, "Depuis votre compte SwimPay")) +
+      "<div class='bas defile'>" +
+        "<p class='groupe-titre'>Vers</p>" +
+        "<div class='cibles' role='radiogroup' aria-label='Type de destination'>" +
+          "<button class='cible' role='radio' data-cible='mobile' aria-checked='false'><span class='ico'>" + ICO.mobile + "</span><span><b>Mobile Money</b><small>Wave, Orange Money, MTN MoMo, Moov Money</small></span></button>" +
+          "<button class='cible' role='radio' data-cible='banque' aria-checked='false'><span class='ico'>" + ICO.banque + "</span><span><b>Banque</b><small>Votre compte ou celui d'un bénéficiaire</small></span></button>" +
+        "</div>" +
+        "<p class='groupe-titre' style='margin-top:6px'>Récents</p>" +
+        RECENTS.map((r) => "<button class='op' data-recent='" + r.tel + "' data-reseau='" + r.reseau + "'><span class='ico'>" + r.nom.split(" ").map((m) => m[0]).join("") + "</span><span class='nom'>" + r.nom + "<small>" + RESEAUX[r.reseau].nom + " · " + r.tel + "</small></span><span class='val'>›</span></button>").join("") +
+      "</div>";
+  },
+  "cible-mobile"() {
+    return carte("24%", titre("Mobile Money", 40, "Envoyer vers")) +
+      "<div class='bas defile'>" +
+        "<div class='sous' role='radiogroup' aria-label='Réseau'>" +
+          Object.entries(RESEAUX).map(([k, r]) => "<button role='radio' data-reseau-choix='" + k + "' aria-checked='" + (E.envoi.reseau === k) + "'><span class='point' style='background:" + r.point + "'></span><span class='nom'>" + r.nom + "<small>" + r.aide + "</small></span><span>›</span></button>").join("") +
+        "</div>" +
+      "</div>";
+  },
+  destinataire() {
+    const r = RESEAUX[E.envoi.reseau];
+    const c = chiffres(E.envoi.tel);
+    const complet = c.length === 10;
+    const mauvaisPrefixe = complet && r.prefixe && !c.startsWith(r.prefixe);
+    const nom = complet && !mauvaisPrefixe ? ANNUAIRE[c] : null;
+    const verif = !complet || mauvaisPrefixe ? ""
+      : nom ? "<div class='verif ok'><span class='rond'>✓</span><span><b>" + nom + "</b><small>Nom vérifié par SwimPay</small></span></div>"
+      : "<div class='verif inconnu'><span class='rond'>?</span><span>Nom non vérifié<small>Ce numéro n'est pas encore sur SwimPay. Vérifiez-le avant d'envoyer.</small></span></div>";
+    return carte("30%", titre(r.nom, 40, "Numéro du destinataire") +
+      "<label class='verre' for='env-tel'><span class='indic'>+225</span><input id='env-tel' inputmode='numeric' placeholder='" + (r.prefixe ? r.prefixe + " 00 00 00 00" : "Numéro Wave") + "' value='" + E.envoi.tel + "'></label>") +
+      "<div class='bas defile'>" +
+        "<p class='message-erreur'>" + (mauvaisPrefixe ? "Ce numéro n'est pas un numéro " + r.nom + " (" + r.aide.toLowerCase() + ")." : "") + "</p>" +
+        verif +
+        "<div class='pousse'></div>" +
+        "<button class='pilule blanche' data-vers-montant " + (complet && !mauvaisPrefixe ? "" : "disabled") + ">Continuer</button>" +
+      "</div>";
+  },
+  "cible-banque"() {
+    return carte("24%", titre("Banque", 44, "Envoyer vers")) +
+      "<div class='bas defile'>" +
+        "<div class='sous' role='radiogroup' aria-label='Compte bancaire'>" +
+          "<button role='radio' data-banque-mode='mien'><span class='point' style='background:var(--encre)'></span><span class='nom'>Mon compte bancaire<small>" + SOURCES[2].det + "</small></span><span>›</span></button>" +
+          "<button role='radio' data-banque-mode='autre'><span class='point' style='background:var(--gris)'></span><span class='nom'>Un autre compte<small>Fournisseur, proche : avec son RIB</small></span><span>›</span></button>" +
+        "</div>" +
+      "</div>";
+  },
+  rib() {
+    const brut = E.envoi.rib.replace(/\s/g, "");
+    const ok = /^[A-Z]{2}[0-9A-Z]{22}$/.test(brut) && E.envoi.titulaire.trim().length > 1;
+    return carte("26%", titre("Bénéficiaire", 40, "Virement bancaire")) +
+      "<div class='bas defile'>" +
+        "<div class='champ'><label for='rib-tit'>Nom du titulaire</label><input class='saisie' id='rib-tit' value='" + echappe(E.envoi.titulaire) + "' placeholder='Ex. Fournisseur Traoré'></div>" +
+        "<div class='champ'><label for='rib-num'>RIB (24 caractères)</label><input class='saisie' id='rib-num' value='" + echappe(E.envoi.rib) + "' placeholder='CI034 01234 012345678901 07' autocapitalize='characters'></div>" +
+        "<p class='aide'>Code banque, guichet, numéro de compte et clé. Le nom du titulaire doit être celui du compte.</p>" +
+        "<div class='pousse'></div>" +
+        "<button class='pilule blanche' data-vers-montant " + (ok ? "" : "disabled") + ">Continuer</button>" +
+      "</div>";
+  },
+  montant() {
+    const m = Number(E.envoi.montant || 0);
+    const f = m ? frais(natureEnvoi(), m) : 0;
+    const qui = E.envoi.cible === "mobile" ? (E.envoi.nom || E.envoi.tel) : (E.envoi.banqueMode === "mien" ? "votre banque" : E.envoi.titulaire);
+    const trop = m + f > E.solde;
+    return carte("24%", titre("Combien ?", 40, "À " + echappe(qui))) +
+      "<div class='bas' style='gap:10px'>" +
+        "<div class='montant-saisi" + (m ? "" : " vide") + "'>" + grandMontant(m) + "</div>" +
+        "<p class='frais-ligne'>" + (trop ? "<span style='color:var(--erreur)'>Solde insuffisant : " + F(E.solde) + " disponibles.</span> <button class='lien' data-aller='recharger' style='padding:0;font-size:13px;text-decoration:underline'>Recharger</button>"
+          : m ? "Frais <b>" + F(f) + "</b> · solde disponible " + F(E.solde) : "Solde disponible " + F(E.solde)) + "</p>" +
+        clavier("000", true) +
+        "<button class='pilule blanche' data-aller='recap-envoi' " + (m >= 100 && !trop ? "" : "disabled") + ">Vérifier</button>" +
+      "</div>";
+  },
+  "recap-envoi"() {
+    const m = Number(E.envoi.montant), f = frais(natureEnvoi(), m);
+    const nomDest = E.envoi.cible === "mobile" ? (E.envoi.nom || "Nom non vérifié") : (E.envoi.banqueMode === "mien" ? "Vous-même" : E.envoi.titulaire);
+    return carte("30%", titre(F(m), 56, "Vous envoyez")) +
+      "<div class='bas defile'>" +
+        "<div class='recap-sombre'>" +
+          "<div><span>À</span><b>" + echappe(nomDest) + (E.envoi.nom ? " <span style='color:var(--acide)'>✓</span>" : "") + "</b></div>" +
+          "<div><span>Vers</span><b>" + echappe(libCible()) + "</b></div>" +
+          "<div><span>Depuis</span><b>Compte SwimPay</b></div>" +
+          "<div><span>Frais</span><b>" + F(f) + "</b></div>" +
+          "<div class='total'><span>Total débité</span><b>" + F(m + f) + "</b></div>" +
+        "</div>" +
+        "<p class='aide'>Le destinataire reçoit exactement <b>" + F(m) + "</b>.</p>" +
+        "<div class='pousse'></div>" +
+        "<button class='pilule blanche' data-confirmer-envoi>Confirmer avec mon code</button>" +
+      "</div>";
+  },
+  envoye() {
+    const o = E.ops[0];
+    return carte("60%",
+      titre("Envoyé.", 64) +
+      "<div class='recap'><div><span>À</span><b>" + echappe(o.nom) + "</b></div><div><span>Montant</span><b>" + F(o.montant) + "</b></div><div><span>Frais</span><b>" + F(o.frais) + "</b></div><div><span>Vers</span><b>" + echappe(o.det.replace(/^Vers /, "")) + "</b></div></div>",
+      { haut: "<div style='flex:1'></div>" }) +
+      "<div class='bas'><div class='pousse'></div><button class='pilule blanche' data-aller='accueil'>Terminé</button><button class='lien' data-op='" + o.id + "'>Voir le détail</button></div>";
+  },
+
+  /* ---------- recharger : les memes deux cibles, cote source ---------- */
+  recharger() {
+    const s = E.recharge.source;
+    return carte("28%", titre("Recharger", 48, "Votre compte SwimPay")) +
+      "<div class='bas defile'>" +
+        "<p class='groupe-titre'>Depuis Mobile Money</p>" +
+        "<div class='sous' role='radiogroup' aria-label='Source de la recharge'>" +
+          SOURCES.filter((x) => x.type === "mobile").map((x) => "<button role='radio' data-source='" + x.id + "' aria-checked='" + (s === x.id) + "'><span class='point' style='background:" + RESEAUX[x.reseau].point + "'></span><span class='nom'>" + x.lib + "<small>" + x.det + "</small></span></button>").join("") +
+        "</div>" +
+        "<p class='groupe-titre'>Depuis une banque</p>" +
+        "<div class='sous'>" +
+          SOURCES.filter((x) => x.type === "banque").map((x) => "<button role='radio' data-source='" + x.id + "' aria-checked='" + (s === x.id) + "'><span class='point' style='background:var(--encre)'></span><span class='nom'>" + x.lib + "<small>" + x.det + "</small></span></button>").join("") +
+        "</div>" +
+        "<button class='lien' data-aller='profil' style='align-self:flex-start;padding:4px 0'>+ Relier un autre compte</button>" +
+        "<div class='pousse'></div>" +
+        "<button class='pilule blanche' data-aller='montant-recharge' " + (s ? "" : "disabled") + ">Continuer</button>" +
+      "</div>";
+  },
+  "montant-recharge"() {
+    const m = Number(E.recharge.montant || 0);
+    const src = SOURCES.find((x) => x.id === E.recharge.source);
+    return carte("24%", titre("Combien ?", 40, "Depuis " + src.lib)) +
+      "<div class='bas' style='gap:10px'>" +
+        "<div class='montant-saisi" + (m ? "" : " vide") + "'>" + grandMontant(m) + "</div>" +
+        "<p class='frais-ligne'>Recharge <b>gratuite</b></p>" +
+        clavier("000", true) +
+        "<button class='pilule blanche' data-lancer-recharge " + (m >= 100 ? "" : "disabled") + ">Recharger " + (m ? F(m) : "") + "</button>" +
+      "</div>";
+  },
+  "validation-recharge"() {
+    const src = SOURCES.find((x) => x.id === E.recharge.source);
+    const mobile = src.type === "mobile";
+    return carte("30%", titre("À valider", 48, F(Number(E.recharge.montant)) + " depuis " + src.lib)) +
+      "<div class='bas'>" +
+        "<div class='attente'><span class='tourne'></span><b>" + (mobile ? "Validez sur votre téléphone" : "Virement en préparation") + "</b><span class='aide'>" +
+          (mobile ? src.lib + " vous demande de confirmer le paiement avec votre code " + src.lib + ". SwimPay ne le voit jamais." : "Le virement part de " + src.det + ". Le compte est crédité dès sa réception.") + "</span></div>" +
+        "<div class='pousse'></div>" +
+        "<button class='demo' data-simuler-recharge>Maquette : simuler la validation</button>" +
+      "</div>";
+  },
+  recharge() {
+    const o = E.ops[0];
+    return carte("60%", titre("Rechargé.", 62) +
+      "<div class='recap'><div><span>Montant</span><b>+" + F(o.montant) + "</b></div><div><span>" + echappe(o.det) + "</span><b>Frais 0" + NBSP + "F</b></div><div><span>Nouveau solde</span><b>" + F(E.solde) + "</b></div></div>",
+      { haut: "<div style='flex:1'></div>" }) +
+      "<div class='bas'><div class='pousse'></div><button class='pilule blanche' data-aller='accueil'>Terminé</button></div>";
+  },
+
+  /* ---------- encaisser ---------- */
+  encaisser() {
+    const m = Number(E.vente.montant || 0);
+    return carte("24%", titre("Encaisser", 40, "Vente " + MARCHAND.nom)) +
+      "<div class='bas' style='gap:10px'>" +
+        "<div class='montant-saisi" + (m ? "" : " vide") + "'>" + grandMontant(m) + "</div>" +
+        "<label class='verre' for='motif' style='background:var(--surface);border-color:var(--trait);height:48px'><input id='motif' placeholder='Article vendu (sur la facture)' value='" + echappe(E.vente.motif) + "' style='font-size:15px'></label>" +
+        "<div class='puces' style='justify-content:center'>" +
+          [["qr", "QR simple"], ["lien", "Lien à envoyer"]].map(([k, l]) => "<button class='puce' data-mode='" + k + "' aria-checked='" + (E.vente.mode === k) + "'>" + l + "</button>").join("") +
+        "</div>" +
+        clavier("000", true) +
+        "<button class='pilule blanche' data-aller='qr' " + (m >= 100 ? "" : "disabled") + ">" + (E.vente.mode === "qr" ? "Afficher le QR" : "Créer le lien") + "</button>" +
+      "</div>";
+  },
+  qr() {
+    const m = Number(E.vente.montant);
+    const lien = "swimpay.pro/p/" + (E.seq * 7919).toString(36).toUpperCase();
+    return carte("20%", titre(E.vente.mode === "qr" ? "QR de la vente" : "Lien de paiement", 32)) +
+      "<div class='bas defile'>" +
+        "<div class='qr-carte'>" + qrSvg(E.seq) + "<div class='qr-montant'>" + F(m) + "</div><small>" + echappe(E.vente.motif || "Vente") + " · " + MARCHAND.nom + "<br>Lisible par toutes les apps Mobile Money et bancaires</small></div>" +
+        "<div class='lien-copie'><span>" + lien + "</span><button data-copier-lien='" + lien + "'>Copier</button></div>" +
+        "<div class='verif ok'><span class='rond'>✓</span><span><b>QR dynamique universel</b><small>Montant et référence inclus, au standard PI-SPI de la BCEAO : le client scanne avec son app habituelle. La facture FNE part dès qu'il a payé.</small></span></div>" +
+        "<button class='demo' data-simuler>Maquette : simuler le paiement du client</button>" +
+      "</div>";
+  },
+  "paiement-recu"() {
+    const o = E.ops[0];
+    return carte("46%",
+      titre("Payé.", 64, o.det) +
+      "<div class='recap'><div><span>Montant</span><b>" + F(o.montant) + "</b></div><div><span>Frais SwimPay · 1 %</span><b>−" + F(o.frais) + "</b></div><div><span>Crédité sur votre compte</span><b>" + F(o.montant - o.frais) + "</b></div></div>",
+      { haut: "<div style='flex:1'></div>" }) +
+      "<div class='bas'>" +
+        "<div class='statut-fne' id='statut-fne'><span class='rond'><span class='tourne'></span></span><span class='txt'>Certification de la facture…<small>Envoi à la DGI</small></span></div>" +
+        "<div class='pousse'></div>" +
+        "<button class='pilule blanche' data-op='" + o.id + "' data-facture id='voir-facture' disabled>Voir la facture</button>" +
+        "<button class='lien' data-aller='accueil'>Retour à l'accueil</button>" +
+      "</div>";
+  },
+  "vente-cash"() {
+    const m = Number(E.vente.montant || 0);
+    return carte("24%", titre("Vente cash", 40, "Espèces reçues au comptoir")) +
+      "<div class='bas' style='gap:10px'>" +
+        "<div class='montant-saisi" + (m ? "" : " vide") + "'>" + grandMontant(m) + "</div>" +
+        "<label class='verre' for='motif' style='background:var(--surface);border-color:var(--trait);height:48px'><input id='motif' placeholder='Article vendu (sur la facture)' value='" + echappe(E.vente.motif) + "' style='font-size:15px'></label>" +
+        "<p class='frais-ligne'>Aucun frais : l'argent n'est pas passé par SwimPay. La facture FNE, si.</p>" +
+        clavier("000", true) +
+        "<button class='pilule blanche' data-cash " + (m >= 100 ? "" : "disabled") + ">Enregistrer et facturer</button>" +
+      "</div>";
+  },
+  facture() {
+    const o = E.ops.find((x) => x.id === E.opCourante) || E.ops.find((x) => x.fne);
+    const ht = o.lignes.reduce((s, l) => s + l[1] * l[2], 0);
+    const num = "2026-" + String(Number(o.fne.slice(-6))).padStart(6, "0");
+    return carte("18%", titre("Facture FNE", 32, "Certifiée par la DGI")) +
+      "<div class='bas defile'>" +
+        "<div class='facture'>" +
+          "<div class='ent'><div><b>" + MARCHAND.nom + "</b><span class='gris'>NCC " + MARCHAND.ncc + " · régime " + MARCHAND.regime + "</span></div><div style='text-align:right'><b>" + num + "</b><span class='gris'>" + o.jour + ", " + o.heure + "</span></div></div>" +
+          "<table><thead><tr><th>Article</th><th>Qté</th><th>Total HT</th></tr></thead><tbody>" +
+            o.lignes.map((l) => "<tr><td>" + echappe(l[0]) + "<br><span class='gris'>" + F(l[2]) + " l'unité</span></td><td>" + l[1] + "</td><td>" + F(l[1] * l[2]) + "</td></tr>").join("") +
+          "</tbody></table>" +
+          "<div class='tot'><div><span class='gris'>Total HT</span><span>" + F(ht) + "</span></div><div><span class='mention-tva'>TVA non applicable</span><span>0" + NBSP + "F</span></div><div class='grand'><span>Total à payer</span><span>" + F(ht) + "</span></div></div>" +
+          "<div class='gris'>Payé : " + echappe(o.det) + "</div>" +
+          "<div class='sticker'>" + qrSvg(o.id + 7) + "<div><b>Facture normalisée électronique</b><span class='gris'>Référence DGI</span><div class='ref'>" + o.fne + "</div><span class='gris'>Scannez pour vérifier sur la plateforme FNE</span></div></div>" +
+        "</div>" +
+        "<div style='display:flex;gap:10px'><button class='pilule contour' style='flex:1'>Partager</button><button class='pilule blanche' style='flex:1' data-aller='accueil'>Terminé</button></div>" +
+      "</div>";
+  },
+
+  /* ---------- les racines ---------- */
+  activite() {
+    const filtre = E.filtre || "tout";
+    const ok = (o) => filtre === "tout" || (filtre === "entrees" && o.type !== "sortie") || (filtre === "sorties" && o.type === "sortie") || (filtre === "fne" && o.fne);
+    let jour = "", html = "";
+    E.ops.filter(ok).forEach((o) => { if (o.jour !== jour) { jour = o.jour; html += "<p class='jour'>" + jour + "</p>"; } html += opLigne(o); });
+    const entrees = E.ops.filter((o) => o.type === "entree").reduce((s, o) => s + o.montant, 0);
+    return carte("24%", titre("Activité", 44, "Cette semaine : +" + F(entrees) + " encaissés"), { haut: "<div style='flex:1'></div>" }) +
+      "<div class='bas defile' style='gap:0'>" +
+        "<div class='puces'>" + [["tout", "Tout"], ["entrees", "Entrées"], ["sorties", "Sorties"], ["fne", "Factures FNE"]].map(([k, l]) => "<button class='puce' data-filtre='" + k + "' aria-checked='" + (filtre === k) + "'>" + l + "</button>").join("") + "</div>" +
+        (html || "<p class='aide' style='margin-top:16px'>Aucune opération pour ce filtre.</p>") +
+      "</div>";
+  },
+  factures() {
+    const f = E.ops.filter((o) => o.fne);
+    const total = f.reduce((s, o) => s + o.montant, 0);
+    return carte("24%", titre("Factures", 44, f.length + " certifiées · " + F(total)), { haut: "<div style='flex:1'></div>" }) +
+      "<div class='bas defile' style='gap:0'>" +
+        "<p class='aide' style='margin-bottom:6px'>Chaque vente encaissée ou enregistrée produit sa facture normalisée. Rien à ressaisir.</p>" +
+        f.map((o) => "<button class='op' data-facture-de='" + o.id + "'><span class='ico' style='font-size:11px'>FNE</span><span class='nom'>N° 2026-" + String(Number(o.fne.slice(-6))).padStart(6, "0") + "<small>" + echappe(o.lignes[0][0]) + " · " + o.jour + "</small></span><span class='val'>" + F(o.montant) + "<small>Certifiée</small></span></button>").join("") +
+      "</div>";
+  },
+  profil() {
+    const lib = ["Déclaré", "SMS", "Pièce", "NCC"];
+    return carte("28%", titre("Boutique<br>Awa", 46, "Commerçant · 5 000 F par mois"), { haut: "<div style='flex:1'></div>" }) +
+      "<div class='bas defile'>" +
+        "<div class='echelle-sombre'><div class='echelle'>" + lib.map(() => "<span class='fait'></span>").join("") + "</div><div class='echelle-lib'>" + lib.map((l) => "<b style='color:var(--encre)'>" + l + "</b>").join("") + "</div></div>" +
+        "<p class='groupe-titre'>Mes comptes reliés</p>" +
+        "<div class='recap-sombre'>" + SOURCES.map((x) => "<div><span>" + x.lib + "</span><b>" + x.det + "</b></div>").join("") + "</div>" +
+        "<p class='groupe-titre'>Entreprise</p>" +
+        "<div class='recap-sombre'><div><span>NCC</span><b>" + MARCHAND.ncc + "</b></div><div><span>Régime fiscal</span><b>TEE · TVAD, hors taxes</b></div></div>" +
+        "<button class='pilule contour'>Relier un autre compte</button>" +
+      "</div>";
+  },
+};
+
+/* ============================ feuilles ============================ */
+const feuille = document.getElementById("feuille");
+const voile = document.getElementById("voile");
+let FE = null;
+function ouvrirFeuille(html, etat) {
+  FE = etat || {};
+  feuille.innerHTML = "<div class='poignee'></div>" + html;
+  voile.hidden = false;
+  requestAnimationFrame(() => { voile.classList.add("ouvert"); feuille.classList.add("ouverte"); });
+}
+function fermerFeuille() {
+  FE = null; voile.classList.remove("ouvert"); feuille.classList.remove("ouverte");
+  setTimeout(() => { if (!FE) voile.hidden = true; }, 260);
+}
+voile.addEventListener("click", fermerFeuille);
+
+function feuilleCode(apres) {
+  E.pin = [];
+  const dessiner = () => {
+    feuille.innerHTML = "<div class='poignee'></div><h3 id='feuille-titre'>Votre code secret</h3>" + cases(4, E.pin) + clavier("", true) + "<button class='lien' data-f-fermer>Annuler</button>";
+    feuille.querySelector("[data-f-fermer]").addEventListener("click", fermerFeuille);
+    feuille.querySelectorAll("[data-touche]").forEach((b) => b.addEventListener("click", () => {
+      if (b.dataset.touche === "effacer") E.pin.pop(); else if (E.pin.length < 4) E.pin.push(b.dataset.touche);
+      dessiner();
+      if (E.pin.length === 4) setTimeout(() => { fermerFeuille(); apres(); }, 260);
+    }));
+  };
+  ouvrirFeuille("", { code: true }); dessiner();
+}
+function feuilleOp(id) {
+  const o = E.ops.find((x) => x.id === Number(id));
+  const signe = o.type === "sortie" ? "−" : "+";
+  const lignes =
+    "<div><span>Montant</span><b>" + signe + F(o.montant) + "</b></div>" +
+    "<div><span>Frais</span><b>" + F(o.frais) + "</b></div>" +
+    "<div><span>" + (o.type === "entree" ? "Payé par" : o.type === "recharge" ? "Source" : "Destination") + "</span><b>" + echappe(o.det) + "</b></div>" +
+    "<div><span>Date</span><b>" + o.jour + ", " + o.heure + "</b></div>" +
+    (o.fne ? "<div><span>Facture FNE</span><b>Certifiée<br><span style='font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:var(--sourd)'>" + o.fne + "</span></b></div>" : "");
+  ouvrirFeuille("<h3 id='feuille-titre'>" + echappe(o.nom) + "</h3><div class='recap-sombre' style='background:var(--fond)'>" + lignes + "</div>" +
+    (o.fne ? "<button class='pilule blanche' data-f-facture>Voir la facture</button>" : "") + "<button class='lien' data-f-fermer>Fermer</button>");
+  feuille.querySelector("[data-f-fermer]").addEventListener("click", fermerFeuille);
+  const bf = feuille.querySelector("[data-f-facture]");
+  if (bf) bf.addEventListener("click", () => { E.opCourante = o.id; aller("facture"); });
+}
+
+/* ============================ rendu et branchements ============================ */
+const hote = document.getElementById("vue-hote");
+document.getElementById("ecran").classList.add("app");
+const ICONES = {
+  accueil: "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8'><path d='M4 10.5 12 4l8 6.5V20H4z'/><path d='M10 20v-5h4v5'/></svg>",
+  activite: "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8'><path d='M4 7h16M4 12h16M4 17h10'/></svg>",
+  factures: "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8'><path d='M6 3h9l3 3v15l-3-1.5L12 21l-3-1.5L6 21z'/><path d='M9 9h6M9 13h6'/></svg>",
+  profil: "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8'><circle cx='12' cy='8' r='4'/><path d='M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6'/></svg>",
+};
+const LIB_NAV = { accueil: "Accueil", activite: "Activité", factures: "Factures", profil: "Profil" };
+let dernierEcran = null;
+function rendre() {
+  const racine = RACINES.includes(E.ecran);
+  /* l'entree ne se joue qu'au CHANGEMENT d'ecran : une frappe au clavier
+     redessine l'ecran, elle ne doit pas le faire clignoter */
+  const meme = E.ecran === dernierEcran; dernierEcran = E.ecran;
+  const defil = meme && hote.querySelector(".bas.defile") ? hote.querySelector(".bas.defile").scrollTop : 0;
+  hote.innerHTML = "<section class='vue" + (racine ? " avec-nav" : "") + (sens === "retour" ? " retour" : "") + (meme ? " sans-anim" : "") + "'>" + ECRANS[E.ecran]() + "</section>";
+  if (defil) hote.querySelector(".bas.defile").scrollTop = defil;
+  sens = "avant";
+  const nav = document.getElementById("nav");
+  nav.hidden = !racine;
+  nav.innerHTML = RACINES.map((k) => "<button data-nav='" + k + "' aria-label='" + LIB_NAV[k] + "' " + (E.ecran === k ? "aria-current='page'" : "") + ">" + ICONES[k] + "</button>").join("");
+  nav.querySelectorAll("[data-nav]").forEach((b) => b.addEventListener("click", () => aller(b.dataset.nav)));
+  brancher();
+  rendreParcours();
+}
+function saisieMontant(obj, t) {
+  let v = obj.montant;
+  if (t === "effacer") v = v.slice(0, -1);
+  else if (t === "000") v = v ? (v + "000").slice(0, 8) : v;
+  else if (v.length < 8 && !(v === "" && t === "0")) v += t;
+  obj.montant = v;
+  rendre();
+}
+function objetMontant() {
+  if (E.ecran === "montant") return E.envoi;
+  if (E.ecran === "montant-recharge") return E.recharge;
+  if (E.ecran === "encaisser" || E.ecran === "vente-cash") return E.vente;
+  return null;
+}
+function reinit(k) {
+  if (k === "envoyer") E.envoi = envoiNeuf();
+  if (k === "recharger") E.recharge = { source: null, montant: "" };
+  if (k === "encaisser" || k === "vente-cash") E.vente = { montant: "", motif: "", mode: "qr" };
+}
+function brancher() {
+  const v = hote.firstElementChild;
+  v.querySelectorAll("[data-retour]").forEach((b) => b.addEventListener("click", retour));
+  v.querySelectorAll("[data-aller]").forEach((b) => b.addEventListener("click", () => { reinit(b.dataset.aller); aller(b.dataset.aller); }));
+  const oeil = v.querySelector("[data-oeil]");
+  if (oeil) oeil.addEventListener("click", () => { E.masque = !E.masque; rendre(); });
+  v.querySelectorAll("[data-op]").forEach((b) => b.addEventListener("click", () => {
+    if (b.hasAttribute("data-facture")) { E.opCourante = Number(b.dataset.op); aller("facture", { remplacer: true }); }
+    else feuilleOp(b.dataset.op);
+  }));
+  v.querySelectorAll("[data-facture-de]").forEach((b) => b.addEventListener("click", () => { E.opCourante = Number(b.dataset.factureDe); aller("facture"); }));
+
+  /* envoyer */
+  v.querySelectorAll("[data-cible]").forEach((b) => b.addEventListener("click", () => {
+    E.envoi.cible = b.dataset.cible; aller(b.dataset.cible === "mobile" ? "cible-mobile" : "cible-banque");
+  }));
+  v.querySelectorAll("[data-recent]").forEach((b) => b.addEventListener("click", () => {
+    E.envoi = envoiNeuf(); E.envoi.cible = "mobile"; E.envoi.reseau = b.dataset.reseau; E.envoi.tel = b.dataset.recent;
+    E.envoi.nom = ANNUAIRE[chiffres(b.dataset.recent)] || ""; aller("destinataire");
+  }));
+  v.querySelectorAll("[data-reseau-choix]").forEach((b) => b.addEventListener("click", () => { E.envoi.reseau = b.dataset.reseauChoix; E.envoi.tel = ""; aller("destinataire"); }));
+  const et = v.querySelector("#env-tel");
+  if (et) et.addEventListener("input", () => {
+    et.value = formateTel(et.value); E.envoi.tel = et.value;
+    E.envoi.nom = ANNUAIRE[chiffres(E.envoi.tel)] || "";
+    const pos = et.value.length; rendre();
+    const n = hote.querySelector("#env-tel"); n.focus(); n.setSelectionRange(pos, pos);
+  });
+  v.querySelectorAll("[data-banque-mode]").forEach((b) => b.addEventListener("click", () => {
+    E.envoi.banqueMode = b.dataset.banqueMode;
+    if (E.envoi.banqueMode === "mien") aller("montant"); else aller("rib");
+  }));
+  const rt = v.querySelector("#rib-tit"), rn = v.querySelector("#rib-num");
+  const majRib = () => {
+    const brut = E.envoi.rib.replace(/\s/g, "");
+    v.querySelector("[data-vers-montant]").disabled = !(/^[A-Z]{2}[0-9A-Z]{22}$/.test(brut) && E.envoi.titulaire.trim().length > 1);
+  };
+  if (rt) rt.addEventListener("input", () => { E.envoi.titulaire = rt.value; majRib(); });
+  if (rn) rn.addEventListener("input", () => { rn.value = rn.value.toUpperCase(); E.envoi.rib = rn.value.replace(/\s/g, ""); majRib(); });
+  const vm = v.querySelector("[data-vers-montant]");
+  if (vm) vm.addEventListener("click", () => aller("montant"));
+  const conf = v.querySelector("[data-confirmer-envoi]");
+  if (conf) conf.addEventListener("click", () => feuilleCode(() => {
+    const m = Number(E.envoi.montant), f = frais(natureEnvoi(), m);
+    const nom = E.envoi.cible === "mobile" ? (E.envoi.nom || E.envoi.tel) : (E.envoi.banqueMode === "mien" ? "Mon compte bancaire" : E.envoi.titulaire);
+    E.ops.unshift({ id: prochainId++, jour: "Aujourd'hui", heure: "9:41", type: "sortie", nom, det: "Vers " + libCible(), montant: m, frais: f });
+    E.solde -= m + f;
+    E.pile = []; aller("envoye", { remplacer: true });
+  }));
+
+  /* recharger */
+  v.querySelectorAll("[data-source]").forEach((b) => b.addEventListener("click", () => { E.recharge.source = b.dataset.source; rendre(); }));
+  const lr = v.querySelector("[data-lancer-recharge]");
+  if (lr) lr.addEventListener("click", () => aller("validation-recharge"));
+  const sr = v.querySelector("[data-simuler-recharge]");
+  if (sr) sr.addEventListener("click", () => {
+    const src = SOURCES.find((x) => x.id === E.recharge.source);
+    const m = Number(E.recharge.montant);
+    E.ops.unshift({ id: prochainId++, jour: "Aujourd'hui", heure: "9:41", type: "recharge", nom: "Recharge", det: "Depuis " + src.lib, montant: m, frais: 0 });
+    E.solde += m; E.pile = []; aller("recharge", { remplacer: true });
+  });
+
+  /* encaisser */
+  const motif = v.querySelector("#motif");
+  if (motif) motif.addEventListener("input", () => { E.vente.motif = motif.value; });
+  v.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => { E.vente.mode = b.dataset.mode; rendre(); }));
+  const cl = v.querySelector("[data-copier-lien]");
+  if (cl) cl.addEventListener("click", () => { const fin = () => { cl.textContent = "Copié"; }; navigator.clipboard.writeText("https://" + cl.dataset.copierLien).then(fin, fin); });
+  const sim = v.querySelector("[data-simuler]");
+  if (sim) sim.addEventListener("click", () => enregistrerVente("Payé par Wave · 05 44 90 12 73", true));
+  const cash = v.querySelector("[data-cash]");
+  if (cash) cash.addEventListener("click", () => enregistrerVente("Espèces, enregistrée", false));
+  v.querySelectorAll("[data-filtre]").forEach((b) => b.addEventListener("click", () => { E.filtre = b.dataset.filtre; rendre(); }));
+
+  /* le clavier des montants */
+  v.querySelectorAll("[data-touche]").forEach((b) => b.addEventListener("click", () => { const o = objetMontant(); if (o) saisieMontant(o, b.dataset.touche); }));
+
+  if (E.ecran === "paiement-recu") setTimeout(() => {
+    const s = hote.querySelector("#statut-fne"); if (!s) return;
+    const o = E.ops[0];
+    s.classList.add("certifiee");
+    s.innerHTML = "<span class='rond'>✓</span><span class='txt'>Facture certifiée<small>Réf. " + o.fne + "</small></span>";
+    hote.querySelector("#voir-facture").disabled = false;
+  }, 1600);
+}
+function enregistrerVente(det, parSwimPay) {
+  const m = Number(E.vente.montant);
+  const f = parSwimPay ? frais("encaissement", m) : 0;
+  const seq = E.seq++;
+  E.ops.unshift({
+    id: prochainId++, jour: "Aujourd'hui", heure: "9:41", type: "entree",
+    nom: parSwimPay ? (E.vente.mode === "qr" ? "Vente comptoir" : "Vente par lien") : "Vente cash", det,
+    montant: m, frais: f, fne: MARCHAND.ncc + "26" + String(seq).padStart(9, "0"),
+    lignes: [[E.vente.motif.trim() || "Vente", 1, m]],
+  });
+  if (parSwimPay) E.solde += m - f;
+  E.pile = [];
+  if (parSwimPay) aller("paiement-recu", { remplacer: true });
+  else { E.opCourante = E.ops[0].id; aller("facture", { remplacer: true }); }
+}
+
+/* le plan des ecrans */
+const PLAN = [
+  ["accueil", "Accueil", "Solde SwimPay, quatre actions, dernières opérations"],
+  ["recharger", "Recharger", "Depuis un de vos Mobile Money ou votre banque"],
+  ["envoyer", "Envoyer", "Mobile Money ou Banque, puis la cible, le nom vérifié, le montant"],
+  ["encaisser", "Encaisser", "Montant, QR ou lien, paiement, facture FNE"],
+  ["vente-cash", "Vente cash", "Enregistrer les espèces, la facture part quand même"],
+  ["activite", "Activité", "Filtres, opérations par jour, détail en feuille"],
+  ["factures", "Factures", "Les factures FNE certifiées"],
+  ["profil", "Profil", "Palier, comptes reliés, régime fiscal"],
+];
+const FAMILLE = {
+  "cible-mobile": "envoyer", "cible-banque": "envoyer", destinataire: "envoyer", rib: "envoyer", montant: "envoyer", "recap-envoi": "envoyer", envoye: "envoyer",
+  "montant-recharge": "recharger", "validation-recharge": "recharger", recharge: "recharger",
+  qr: "encaisser", "paiement-recu": "encaisser", facture: "factures",
+};
+function rendreParcours() {
+  const ici = FAMILLE[E.ecran] || E.ecran;
+  document.getElementById("parcours").innerHTML = PLAN.map(([k, nom, det], i) =>
+    "<li><button class='" + (k === ici ? "ici" : "") + "' data-plan='" + k + "'><span class='num'>" + (i + 1) + "</span><span>" + nom + "<br><small>" + det + "</small></span><span>" + (k === ici ? "←" : "") + "</span></button></li>").join("");
+  document.querySelectorAll("[data-plan]").forEach((b) => b.addEventListener("click", () => { reinit(b.dataset.plan); E.pile = []; aller(b.dataset.plan); }));
+}
+document.getElementById("recommencer").addEventListener("click", () => { E = neuf(); prochainId = 7; fermerFeuille(); rendre(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && FE) return fermerFeuille();
+  if (document.activeElement.tagName === "INPUT") return;
+  const t = /^[0-9]$/.test(e.key) ? e.key : e.key === "Backspace" ? "effacer" : null;
+  if (!t) return;
+  if (FE && FE.code) { const b = feuille.querySelector("[data-touche='" + t + "']"); if (b) b.click(); return; }
+  const o = objetMontant(); if (o) saisieMontant(o, t);
+});
+rendre();
+
+</script>
+

@@ -10,6 +10,8 @@
     { "path": "packages/matching-core" },
     { "path": "packages/bank-templates" },
     { "path": "packages/shared-utils" },
+    { "path": "packages/rails" },
+    { "path": "packages/brain" },
     { "path": "apps/api" },
     { "path": "apps/signal-worker" },
     { "path": "apps/job-worker" },

@@ -1,0 +1,46 @@
+{
+  // ── SwimPay — le site, servi par un Worker à assets statiques ──
+  //
+  // POURQUOI CE FICHIER EST ICI ET NON À LA RACINE.
+  //
+  // Premier essai : wrangler.jsonc à la racine du dépôt. Cloudflare l'a bien
+  // trouvé, mais la racine porte le package.json du monorepo, avec ses
+  // workspaces, et wrangler a refusé :
+  //   « The Cloudflare application detection logic has been run in the root
+  //     of a workspace instead of targeting a specific project. »
+  //
+  // La configuration vit donc dans son propre dossier, sans package.json.
+  // Cloudflare y est pointé par « Root directory: deploy » — voir README.md.
+  //
+  // ── LES DEUX VALEURS QUI ONT DÉJÀ FAIT ÉCHOUER UN BUILD ──
+  //
+  // name : le CI impose le sien, tiré du dépôt. « swimpay-site » a produit
+  //   « Failed to match Worker name... the CI system expected "swimpay".
+  //     Overriding using the CI provided Worker name. »
+  //   On écrit donc le nom que le CI attend, sinon Cloudflare ouvre une pull
+  //   request pour corriger ce fichier à notre place.
+  //
+  // compatibility_date : elle DOIT être passée pour l'API, qui juge à l'heure
+  //   UTC. « 2026-08-31 » a été refusée — « Can't set compatibility date in
+  //   the future » — alors qu'il était le 31 en heure locale : les journaux du
+  //   build étaient horodatés 2026-08-30T22:21 UTC. Ne jamais y mettre la date
+  //   du jour ; prendre une date franchement passée.
+  "name": "swimpay",
+  "main": "worker.js",
+  "compatibility_date": "2026-08-29",
+
+  "assets": {
+    "directory": "public",
+    "binding": "ASSETS",
+    // SANS CECI, LE WORKER NE TOURNE JAMAIS. Par defaut, Cloudflare sert un
+    // fichier qui correspond a la requete SANS invoquer le Worker : nos
+    // en-tetes de securite (CSP, HSTS, nosniff…) n'ont donc jamais ete
+    // envoyes, du premier deploiement au 29/09/2026, ou un curl -D l'a montre.
+    "run_worker_first": true,
+    // Le site est UNE page routée par ancre : toute adresse inconnue doit
+    // rendre index.html plutôt qu'un 404, sinon /business tombe à côté.
+    "not_found_handling": "single-page-application"
+  },
+
+  "observability": { "enabled": true }
+}

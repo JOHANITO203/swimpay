@@ -1,0 +1,1170 @@
+<title>Tontine SwimPay</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Archivo:wdth,wght@62..125,500..900&display=swap">
+<style>
+/* La demo de la tontine classique SwimPay, dans la grammaire de l'app
+   (app-photo-verre.html) : sol noir, hero deux tons acide, verre, Archivo
+   condense pour les titres. Mono-theme sombre assume, comme l'app.
+   Les calculs sont ceux de design/pivot/sondes/tontine-v2.py, au franc pres. */
+:root {
+  color-scheme: dark;
+  --fond: #141414; --planche: #0C0C0C; --surface: #1C1C1C; --surface-2: #242424;
+  --trait: #2E2E2E; --gris: #434343; --encre: #FFFFFF; --sourd: #909090;
+  --acide: #A2FF01; --encre-acide: #141414; --erreur: #E5484D; --alerte: #FFB020;
+  --verre: rgba(255,255,255,.16); --verre-bord: rgba(255,255,255,.28);
+  --sortie: cubic-bezier(.23,1,.32,1); --tiroir: cubic-bezier(.32,.72,0,1);
+  --titre: "Archivo", "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --corps: "Outfit", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --grad-hero: linear-gradient(158deg, #6FBF00 0%, #8FE500 16%, #A2FF01 42%, #BFFF2E 68%, #E2FF8C 92%, #F2FFC4 100%);
+  --voile-hero: radial-gradient(118% 80% at 86% 2%, rgba(255,255,255,.30), transparent 62%), radial-gradient(92% 72% at 6% 98%, rgba(60,120,0,.30), transparent 58%);
+}
+* { box-sizing: border-box; }
+html, body { background: var(--planche); }
+body { margin: 0; color: var(--encre); font-family: var(--corps); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--acide); outline-offset: 2px; }
+
+.page { max-width: 1240px; margin: 0 auto; padding: 28px 20px 56px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 44px; align-items: start; }
+
+/* ---------- le telephone ---------- */
+.tel { width: 390px; height: 820px; border-radius: 56px; padding: 10px; flex: none; background: linear-gradient(145deg, #3a3a3a, #111 40%, #2a2a2a); box-shadow: 0 40px 80px -30px rgba(0,0,0,.85), inset 0 0 0 1px #4a4a4a; position: sticky; top: 20px; }
+.ecran { position: relative; width: 100%; height: 100%; border-radius: 46px; overflow: hidden; background: var(--fond); isolation: isolate; }
+.barre { position: absolute; top: 0; left: 0; right: 0; z-index: 30; height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 4px 30px 0; font-size: 14px; font-weight: 600; color: var(--encre-acide); pointer-events: none; }
+.barre::after { content: ""; position: absolute; left: 50%; top: 11px; transform: translateX(-50%); width: 110px; height: 32px; border-radius: 99px; background: #000; }
+.barre i { display: inline-block; width: 17px; height: 10px; border-radius: 3px; border: 1.5px solid currentColor; margin-left: 4px; }
+.indicateur { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 130px; height: 5px; border-radius: 9px; background: var(--encre); z-index: 30; pointer-events: none; }
+.vue { position: absolute; inset: 0; display: flex; flex-direction: column; z-index: 1; animation: entre 320ms var(--sortie) both; }
+.vue.retour { animation-name: entre-retour; }
+.vue.sans-anim { animation: none; }
+@keyframes entre { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+@keyframes entre-retour { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+
+.hero { position: relative; flex: none; border-radius: 0 0 36px 36px; overflow: hidden; background: var(--grad-hero); color: var(--encre-acide); display: flex; flex-direction: column; gap: 14px; padding: 54px 18px 18px; }
+.hero::after { content: ""; position: absolute; inset: 0; background: var(--voile-hero); pointer-events: none; }
+.hero .haut { position: relative; z-index: 3; display: flex; align-items: center; gap: 12px; min-height: 40px; }
+.hero .dessus { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
+.titre { margin: 0; font-family: var(--titre); font-weight: 900; font-stretch: 72%; letter-spacing: -0.02em; line-height: .9; text-transform: uppercase; text-wrap: balance; }
+.surtitre { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(20,20,20,.66); }
+.rond { width: 40px; height: 40px; border-radius: 99px; flex: none; display: grid; place-items: center; cursor: pointer; background: rgba(20,20,20,.08); border: 1px solid rgba(20,20,20,.18); color: var(--encre-acide); font-size: 18px; }
+.rond:active { transform: scale(.94); }
+.plaque { border-radius: 26px; padding: 14px 16px; display: grid; gap: 2px; background: rgba(255,255,255,.36); border: 1px solid rgba(255,255,255,.55); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.plaque .lp { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: rgba(20,20,20,.72); }
+.plaque .lp b { color: var(--encre-acide); font-weight: 600; }
+.montant { font-family: var(--titre); font-weight: 900; font-stretch: 72%; letter-spacing: -0.02em; line-height: .95; font-size: 50px; }
+.montant small { font-size: 24px; }
+
+.bas { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 18px 18px 30px; min-height: 0; overflow-y: auto; scrollbar-width: none; }
+.bas::-webkit-scrollbar { display: none; }
+.pousse { flex: 1; min-height: 4px; }
+.pilule { flex: none; height: 54px; border-radius: 999px; border: 0; cursor: pointer; font-weight: 600; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 140ms var(--sortie), opacity 160ms; }
+.pilule:active { transform: scale(.97); }
+.pilule.blanche { background: var(--encre); color: var(--fond); }
+.pilule.acide { background: var(--acide); color: var(--encre-acide); }
+.pilule.contour { background: none; border: 1px solid var(--gris); }
+.pilule:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+.groupe-titre { margin: 6px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--sourd); }
+.aide { margin: 0; font-size: 13px; color: var(--sourd); }
+.aide b { color: var(--encre); font-weight: 500; }
+.puces { display: flex; flex-wrap: wrap; gap: 8px; }
+.puce { border: 1px solid var(--trait); background: none; border-radius: 999px; padding: 8px 14px; cursor: pointer; font-size: 14px; }
+.puce[aria-pressed="true"] { background: var(--encre); color: var(--fond); border-color: var(--encre); font-weight: 600; }
+.recap { border: 1px solid var(--trait); border-radius: 22px; padding: 2px 16px; background: var(--surface); }
+.recap div { display: flex; justify-content: space-between; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--trait); font-size: 14px; }
+.recap div:last-child { border-bottom: 0; }
+.recap span { color: var(--sourd); }
+.recap b { font-weight: 600; text-align: right; }
+.recap .total b { font-size: 18px; }
+.recap .total span { color: var(--encre); font-weight: 600; }
+.recap .moins b { color: var(--sourd); font-weight: 500; }
+.recap .libre b { color: var(--acide); }
+.bloc { border-radius: 20px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--trait); font-size: 13.5px; color: var(--sourd); display: grid; gap: 6px; }
+.bloc b { color: var(--encre); font-weight: 600; }
+.bloc h3 { margin: 0; font-size: 14px; color: var(--encre); font-weight: 600; }
+.bloc.alerte { border-color: rgba(255,176,32,.5); }
+.bloc.alerte h3 { color: var(--alerte); }
+.bloc.ok { border-color: rgba(162,255,1,.4); }
+.places { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.places div { border-radius: 16px; background: var(--surface-2); padding: 10px; display: grid; gap: 2px; text-align: center; }
+.places small { color: var(--sourd); font-size: 11.5px; }
+.places b { font-size: 15px; }
+.echelle { display: flex; gap: 3px; }
+.echelle span { flex: 1; height: 5px; border-radius: 9px; background: rgba(20,20,20,.18); }
+.echelle span.fait { background: var(--encre-acide); }
+.membre { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--trait); animation: entre 280ms var(--sortie) both; }
+.membre .ini { width: 38px; height: 38px; border-radius: 99px; flex: none; display: grid; place-items: center; background: var(--surface-2); font-weight: 700; font-size: 13px; }
+.membre .ini.vous { background: var(--acide); color: var(--encre-acide); }
+.membre .nom { flex: 1; min-width: 0; font-weight: 500; }
+.membre .nom small { display: block; color: var(--sourd); font-weight: 400; font-size: 12.5px; }
+.membre .etat { font-size: 12.5px; color: var(--sourd); text-align: right; white-space: nowrap; }
+.membre .etat.v { color: var(--acide); }
+.membre .etat.a { color: var(--alerte); }
+.membre .etat.r { color: var(--erreur); }
+.empreinte { font-family: var(--mono); font-size: 12px; word-break: break-all; color: var(--encre); background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
+.etape { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; }
+.etape .n { width: 30px; height: 30px; border-radius: 99px; display: grid; place-items: center; font-size: 13px; font-weight: 700; border: 1px solid var(--gris); color: var(--sourd); }
+.etape.fait .n { background: var(--acide); border-color: var(--acide); color: var(--encre-acide); }
+.etape .t { display: grid; gap: 6px; font-size: 14px; }
+.etape .t small { color: var(--sourd); font-size: 12.5px; }
+.geste { height: 64px; border-radius: 20px; border: 1px dashed var(--gris); background: none; cursor: pointer; color: var(--encre); font-size: 14px; }
+.geste:active { transform: scale(.98); }
+.tour-l { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--trait); }
+.tour-l .num { font-family: var(--titre); font-weight: 900; font-stretch: 72%; font-size: 22px; color: var(--sourd); }
+.tour-l.passe .num { color: var(--encre); }
+.tour-l.encours .num { color: var(--acide); }
+.tour-l .qui { font-size: 14px; font-weight: 500; min-width: 0; }
+.tour-l .qui small { display: block; color: var(--sourd); font-weight: 400; font-size: 12px; }
+.tour-l .st { font-size: 12px; color: var(--sourd); text-align: right; }
+.tour-l .st.v { color: var(--acide); }
+.boutons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.entree-j { font-size: 13px; padding: 8px 0; border-bottom: 1px solid var(--trait); display: grid; grid-template-columns: 1fr; gap: 1px; }
+.entree-j b { font-weight: 600; }
+.entree-j small { color: var(--sourd); }
+.entree-j.manque b { color: var(--alerte); }
+.entree-j.gain b { color: var(--acide); }
+.jour { margin: 12px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--sourd); }
+
+/* feuille qui monte */
+.voile { position: absolute; inset: 0; z-index: 20; background: rgba(0,0,0,.55); opacity: 0; transition: opacity 240ms var(--sortie); }
+.voile.ouvert { opacity: 1; }
+.feuille { position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--surface); border-radius: 32px 32px 0 0; border-top: 1px solid var(--trait); padding: 10px 18px 34px; display: flex; flex-direction: column; gap: 12px; transform: translateY(105%); transition: transform 300ms var(--tiroir); max-height: 88%; overflow-y: auto; scrollbar-width: none; }
+.feuille.ouverte { transform: none; }
+.feuille .poignee { width: 40px; height: 5px; border-radius: 9px; background: var(--gris); align-self: center; margin-bottom: 4px; flex: none; }
+.feuille h3 { margin: 0; font-size: 20px; font-weight: 600; }
+.cases { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.cases span { height: 56px; border-radius: 18px; display: grid; place-items: center; font-size: 26px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); }
+.cases span.vide { color: rgba(255,255,255,.3); }
+.clavier { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 14px; }
+.clavier button { height: 52px; border-radius: 999px; border: 1px solid var(--trait); background: none; cursor: pointer; font-size: 22px; }
+.clavier button:active { transform: scale(.94); background: var(--surface-2); }
+.clavier button.muet { border-color: transparent; font-size: 15px; color: var(--sourd); }
+.interrupteur-l { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+.interrupteur { width: 50px; height: 30px; border-radius: 99px; border: 0; cursor: pointer; position: relative; flex: none; background: var(--gris); transition: background 180ms var(--sortie); }
+.interrupteur::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 99px; background: var(--encre); transition: transform 220ms var(--sortie); }
+.interrupteur[aria-pressed="true"] { background: var(--acide); }
+.interrupteur[aria-pressed="true"]::after { transform: translateX(20px); background: var(--fond); }
+
+/* ---------- le cote : le moteur ---------- */
+.cote { display: grid; gap: 20px; min-width: 0; padding-top: 6px; }
+.cote h1 { margin: 0; font-family: var(--titre); font-weight: 900; font-stretch: 72%; letter-spacing: -0.02em; line-height: .95; font-size: clamp(34px, 4.4vw, 52px); text-transform: uppercase; }
+.cote p { margin: 0; color: var(--sourd); max-width: 68ch; }
+.cote p b { color: var(--encre); font-weight: 500; }
+.cote h2 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--sourd); }
+.regles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 560px) { .regles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.regles div { border: 1px solid var(--trait); border-radius: 16px; padding: 10px 12px; display: grid; gap: 2px; }
+.regles b { font-family: var(--titre); font-weight: 900; font-stretch: 72%; font-size: 26px; line-height: 1; }
+.regles span { font-size: 12.5px; color: var(--sourd); line-height: 1.35; }
+.scenarios { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.scenario { border: 1px solid var(--trait); background: var(--surface); border-radius: 16px; padding: 10px 14px; text-align: left; cursor: pointer; display: grid; gap: 2px; }
+.scenario b { font-size: 14px; font-weight: 600; }
+.scenario small { color: var(--sourd); font-size: 12.5px; line-height: 1.35; }
+.scenario[aria-pressed="true"] { border-color: var(--acide); background: var(--surface-2); }
+.commandes { display: flex; flex-wrap: wrap; gap: 8px; }
+.cmd { border: 1px solid var(--gris); background: none; border-radius: 999px; padding: 9px 16px; cursor: pointer; font-size: 14px; font-weight: 500; }
+.cmd.principale { background: var(--encre); color: var(--fond); border-color: var(--encre); font-weight: 600; }
+.cmd:disabled { opacity: .35; cursor: not-allowed; }
+.cmd:active:not(:disabled) { transform: scale(.97); }
+.etat-moteur { font-size: 14px; color: var(--encre); }
+.table-zone { overflow-x: auto; border: 1px solid var(--trait); border-radius: 18px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 720px; }
+th, td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--trait); white-space: nowrap; }
+th { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--sourd); background: var(--surface); position: sticky; top: 0; }
+th:nth-child(-n+3), td:nth-child(-n+3) { text-align: left; }
+tr.vous td { background: rgba(162,255,1,.07); }
+tr.vous td:nth-child(2) { color: var(--acide); font-weight: 600; }
+td .pill { display: inline-block; font-size: 11.5px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--gris); color: var(--sourd); }
+td .pill.v { border-color: rgba(162,255,1,.5); color: var(--acide); }
+td .pill.a { border-color: rgba(255,176,32,.5); color: var(--alerte); }
+td .pill.r { border-color: rgba(229,72,77,.6); color: var(--erreur); }
+td.pos { color: var(--acide); }
+td.neg { color: var(--encre); }
+.totaux { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.totaux div { border-radius: 16px; background: var(--surface); border: 1px solid var(--trait); padding: 10px 14px; display: grid; gap: 2px; }
+.totaux span { font-size: 12px; color: var(--sourd); }
+.totaux b { font-size: 18px; font-weight: 600; }
+.totaux .ok b { color: var(--acide); }
+.notes { border-top: 1px solid var(--trait); padding-top: 14px; display: grid; gap: 6px; font-size: 13px; color: var(--sourd); max-width: 76ch; }
+.notes b { color: var(--encre); font-weight: 500; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0ms !important; transition-duration: 0ms !important; } }
+@media (max-width: 980px) {
+  .page { grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 28px; }
+  .tel { position: relative; top: 0; }
+  .cote { width: 100%; }
+}
+@media (max-width: 440px) {
+  .page { padding-inline: 16px; }
+  .tel { width: 100%; height: 780px; border-radius: 40px; padding: 7px; }
+  .ecran { border-radius: 34px; }
+}
+
+/* ---------- v2 : l'app autour de la tontine ---------- */
+.nav { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 15; display: flex; gap: 6px; padding: 6px; border-radius: 999px; background: rgba(28,28,28,.94); border: 1px solid var(--trait); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.nav button { width: 58px; height: 54px; border-radius: 99px; border: 0; background: none; cursor: pointer; display: grid; place-items: center; gap: 0; color: var(--sourd); font-size: 10px; font-weight: 600; letter-spacing: .02em; position: relative; }
+.nav button svg { width: 21px; height: 21px; }
+.nav button[aria-current="page"] { background: var(--acide); color: var(--encre-acide); }
+.nav .pastille { position: absolute; top: 7px; right: 12px; width: 9px; height: 9px; border-radius: 99px; background: var(--erreur); border: 2px solid #1c1c1c; }
+.vue.avec-nav .bas { padding-bottom: 100px; }
+.notif { position: absolute; top: 52px; left: 10px; right: 10px; z-index: 25; border-radius: 26px; padding: 12px 12px 12px 14px; background: rgba(36,36,36,.97); border: 1px solid var(--gris); box-shadow: 0 18px 40px -12px rgba(0,0,0,.8); display: grid; grid-template-columns: 38px 1fr auto; gap: 10px; align-items: center; transform: translateY(calc(-100% - 70px)); opacity: 0; visibility: hidden; transition: transform 420ms var(--tiroir), opacity 200ms, visibility 0s 420ms; }
+.notif.visible { transform: none; opacity: 1; visibility: visible; transition: transform 420ms var(--tiroir), opacity 200ms, visibility 0s; }
+.notif .ico { width: 38px; height: 38px; border-radius: 12px; background: var(--acide); color: var(--encre-acide); display: grid; place-items: center; font-weight: 800; font-family: var(--titre); font-stretch: 72%; font-size: 18px; }
+.notif .txt { font-size: 13px; line-height: 1.3; min-width: 0; }
+.notif .txt b { display: block; font-size: 13.5px; }
+.notif .txt small { color: var(--sourd); font-size: 11.5px; }
+.notif .voir { border: 0; border-radius: 99px; background: var(--encre); color: var(--fond); font-weight: 600; font-size: 13px; padding: 8px 14px; cursor: pointer; }
+.actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.action-ronde { display: grid; justify-items: center; gap: 7px; border: 0; background: none; cursor: pointer; font-size: 12.5px; color: var(--encre); }
+.action-ronde span { width: 56px; height: 56px; border-radius: 99px; display: grid; place-items: center; border: 1px solid var(--gris); font-size: 20px; }
+.action-ronde.acide span { background: var(--acide); border-color: var(--acide); color: var(--encre-acide); font-family: var(--titre); font-weight: 900; font-stretch: 72%; }
+.carte-t { border: 1px solid var(--trait); background: var(--surface); border-radius: 24px; padding: 14px 16px; display: grid; gap: 8px; text-align: left; cursor: pointer; width: 100%; }
+.carte-t:active { transform: scale(.985); }
+.carte-t .l1 { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.carte-t .l1 b { font-size: 16px; font-weight: 600; }
+.carte-t .l1 span { font-size: 12px; color: var(--sourd); white-space: nowrap; }
+.carte-t .l2 { font-size: 13px; color: var(--sourd); }
+.carte-t .l2 b { color: var(--encre); font-weight: 500; }
+.carte-t.active { border-color: rgba(162,255,1,.45); }
+.etiquette { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; border-radius: 99px; padding: 3px 9px; border: 1px solid var(--gris); color: var(--sourd); }
+.etiquette.v { border-color: rgba(162,255,1,.5); color: var(--acide); }
+.etiquette.a { border-color: rgba(255,176,32,.5); color: var(--alerte); }
+.barre-places { display: flex; gap: 3px; }
+.barre-places span { flex: 1; height: 5px; border-radius: 9px; background: var(--gris); }
+.barre-places span.fait { background: var(--acide); }
+.champ { display: grid; gap: 6px; }
+.champ label { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--sourd); }
+.saisie-l { display: flex; align-items: center; gap: 8px; height: 54px; border-radius: 18px; border: 1px solid var(--trait); background: var(--surface); padding: 0 16px; }
+.saisie-l:focus-within { border-color: var(--sourd); }
+.saisie-l input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font-size: 18px; font-weight: 600; }
+.saisie-l span { color: var(--sourd); font-size: 14px; white-space: nowrap; }
+.saisie-l.erreur { border-color: var(--erreur); }
+.deux { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.erreur-t { margin: 0; font-size: 13px; color: var(--erreur); }
+.flux { display: grid; gap: 0; }
+.flux div { display: grid; grid-template-columns: 10px 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--trait); font-size: 13.5px; animation: entre 260ms var(--sortie) both; }
+.flux i { width: 8px; height: 8px; border-radius: 99px; background: var(--acide); }
+.flux .part i { background: var(--alerte); }
+.flux .sys i { background: var(--encre); }
+.flux small { color: var(--sourd); font-size: 12px; }
+.pilule.commencer { background: var(--gris); color: var(--sourd); }
+.pilule.commencer.pret { background: var(--acide); color: var(--encre-acide); box-shadow: 0 0 0 6px rgba(162,255,1,.14); }
+.direct { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--encre-acide); }
+.direct::before { content: ""; width: 8px; height: 8px; border-radius: 99px; background: #E5484D; animation: pulse 1.2s infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+.revele { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--trait); animation: tombe 380ms var(--sortie) both; }
+@keyframes tombe { from { opacity: 0; transform: translateY(-10px) scale(.98); } to { opacity: 1; transform: none; } }
+.revele .num { font-family: var(--titre); font-weight: 900; font-stretch: 72%; font-size: 22px; color: var(--sourd); }
+.revele.vous { background: rgba(162,255,1,.08); border-radius: 14px; padding-inline: 8px; }
+.revele.vous .num, .revele.vous .qui { color: var(--acide); }
+.revele .qui { font-weight: 500; }
+.stub { display: grid; place-items: center; text-align: center; gap: 8px; padding: 40px 10px; color: var(--sourd); }
+.parcours-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+</style>
+
+<div class="page">
+  <div class="tel"><div class="ecran" id="ecran">
+    <div class="barre"><span>9:41</span><span><i></i><i></i></span></div>
+    <div id="vue-hote"></div>
+    <div class="notif" id="notif" role="status" aria-live="polite"></div>
+    <div class="voile" id="voile" hidden></div>
+    <div class="feuille" id="feuille" role="dialog" aria-modal="true" aria-labelledby="feuille-titre"></div>
+    <div class="indicateur"></div>
+  </div></div>
+
+  <aside class="cote">
+    <h1>Tontine SwimPay</h1>
+    <p>La tontine classique dans l'app SwimPay, avec <b>les règles figées le 30 septembre</b>. Le téléphone montre ce que vit le membre, du premier écran au bilan. Ce panneau montre <b>ce que fait le système</b>, pour tout le groupe. Aucun humain ne décide.</p>
+
+    <section class="regles" aria-label="Les règles">
+      <div><b>25 %</b><span>de caution, rendue au fil des mises après le gain</span></div>
+      <div><b>= dû</b><span>au gain, on ne garde que ce qu'il doit encore, caution d'abord ; tout le reste est rendu</span></div>
+      <div><b>2 %</b><span>de réserve de secours, rendue à la fin</span></div>
+      <div><b>3 %</b><span>de frais du système, pris au gain</span></div>
+      <div><b>+3 %</b><span>de bonus pour le dernier tiers des tours</span></div>
+      <div><b>5 %</b><span>de pénalité sur ce qui est payé à la place d'un membre</span></div>
+    </section>
+
+    <section style="display:grid;gap:10px">
+      <h2>Le parcours</h2>
+      <p>Deux façons d'entrer : <b>créer</b> une tontine depuis l'onglet Tontine (tu es l'organisateur), ou <b>recevoir</b> une invitation ou un événement ouvert (tu es membre).</p>
+      <div class="parcours-btns">
+        <button class="cmd" id="cmd-invit" type="button">Recevoir une invitation</button>
+        <button class="cmd" id="cmd-global" type="button">Recevoir un événement ouvert</button>
+        <button class="cmd" id="cmd-raccourci" type="button">Sauter au tirage fait</button>
+      </div>
+    </section>
+
+    <section style="display:grid;gap:10px">
+      <h2>Le scénario</h2>
+      <div class="scenarios" id="scenarios" role="group" aria-label="Choisir un scénario"></div>
+    </section>
+
+    <section style="display:grid;gap:10px">
+      <h2>Le moteur</h2>
+      <div class="commandes">
+        <button class="cmd principale" id="cmd-tour" type="button">Tour suivant</button>
+        <button class="cmd" id="cmd-fin" type="button">Aller à la fin</button>
+        <button class="cmd" id="cmd-reset" type="button">Recommencer</button>
+      </div>
+      <div class="etat-moteur" id="etat-moteur"></div>
+      <div class="table-zone"><table id="table"></table></div>
+      <div class="totaux" id="totaux"></div>
+    </section>
+
+    <div class="notes">
+      <div><b>Réel :</b> les règles et tous les montants. Le moteur de cette page est le même calcul que le simulateur <b>tontine-v3.py</b>, vérifié identique. Un format saisi librement passe dans ce moteur : le tableau montre s'il tient.</div>
+      <div><b>Exemples de maquette :</b> les noms, le solde, les arrivées et départs des membres, le code secret (libre), le compte de retrait.</div>
+    </div>
+  </aside>
+</div>
+
+<script>
+/* ======================= SHA-256 (pour le tirage prouvable) ======================= */
+function sha256(texte) {
+  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  const octets = Array.from(new TextEncoder().encode(texte));
+  const l = octets.length * 8;
+  octets.push(0x80); while (octets.length % 64 !== 56) octets.push(0);
+  for (let i = 7; i >= 0; i--) octets.push(i >= 4 ? 0 : (l >>> (i * 8)) & 0xff);
+  let h = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+  const r = (x, n) => (x >>> n) | (x << (32 - n));
+  for (let o = 0; o < octets.length; o += 64) {
+    const w = new Array(64);
+    for (let i = 0; i < 16; i++) w[i] = (octets[o+4*i] << 24) | (octets[o+4*i+1] << 16) | (octets[o+4*i+2] << 8) | octets[o+4*i+3];
+    for (let i = 16; i < 64; i++) { const s0 = r(w[i-15],7) ^ r(w[i-15],18) ^ (w[i-15] >>> 3), s1 = r(w[i-2],17) ^ r(w[i-2],19) ^ (w[i-2] >>> 10); w[i] = (w[i-16] + s0 + w[i-7] + s1) | 0; }
+    let [a,b,c,d,e,f,g,hh] = h;
+    for (let i = 0; i < 64; i++) {
+      const t1 = (hh + (r(e,6) ^ r(e,11) ^ r(e,25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) | 0;
+      const t2 = ((r(a,2) ^ r(a,13) ^ r(a,22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+      hh = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    h = h.map((v, i) => (v + [a,b,c,d,e,f,g,hh][i]) | 0);
+  }
+  return h.map((v) => (v >>> 0).toString(16).padStart(8, "0")).join("");
+}
+
+/* ======================= le moteur (port de tontine-v3.py) =======================
+   LA REGLE (LO, 30/09/2026) : le jour du gain, SwimPay garde EXACTEMENT les mises
+   restantes du gagnant, prises d'abord sur sa caution, puis sur sa cagnotte, et lui
+   rend tout le reste. A chaque mise payee, ce qui est garde baisse d'autant : la
+   difference lui est rendue. Le gagnant paie ses mises lui-meme ; ce qui est garde
+   ne paie que s'il ne paie pas. */
+const REGLES = { caution: 25, frais: 3, reserve: 2, bonus: 3, penalite: 5, plafondSw: 2 };
+const pct = (m, p) => Math.floor(m * p / 100);
+function creeMoteur(N, T, B, c, absences) {
+  const cagnotte = T * c;
+  const M = { N, T, B, c, cagnotte, absences: absences || {},
+    caution0: pct(cagnotte, REGLES.caution),
+    frais: pct(cagnotte, REGLES.frais), mise: pct(cagnotte, REGLES.reserve), bonus: pct(cagnotte, REGLES.bonus),
+    plafondSw: pct(N * c * T, REGLES.plafondSw),
+    tour: 0, clos: false, reserve: 0, revenu: 0, avanceEnCours: 0, avanceMax: 0, perteSw: 0, journal: [], p: [] };
+  for (let i = 0; i < N; i++) M.p.push({ sortie: M.caution0, entree: 0, bloque: 0, caution: M.caution0, detteRes: 0, detteSw: 0,
+    differe: 0, penalites: 0, manquees: 0, libre: null, rendu: 0, bonusRecu: 0, partReserve: 0, liberes: 0, liberesTour: 0, gain: null });
+  return M;
+}
+const tourDe = (M, i) => Math.floor(i / M.B) + 1;
+const estDernier = (M, t) => t > M.T - Math.floor(M.T / 3);
+function absent(M, i, t) { const a = M.absences[i]; if (!a) return false; return t >= a[0] && (a[1] == null || t < a[1]); }
+function note(M, t, i, texte, genre) { M.journal.push({ t, i, texte, genre: genre || "" }); }
+/* garder exactement ses mises restantes apres le tour t : caution d'abord, puis cagnotte */
+function ajuste(M, i, t) {
+  const q = M.p[i], restantes = (M.T - t) * M.c;
+  let rendu = 0;
+  if (q.caution > restantes) { rendu += q.caution - restantes; q.caution = restantes; }
+  const cible = Math.max(0, restantes - q.caution);
+  if (q.bloque > cible) { rendu += q.bloque - cible; q.bloque = cible; }
+  q.entree += rendu;
+  return rendu;
+}
+function tourSuivant(M) {
+  if (M.clos || M.tour >= M.T) return;
+  const t = ++M.tour, c = M.c;
+  M.p.forEach((q) => { q.liberesTour = 0; });
+  for (const [k, a] of Object.entries(M.absences)) {
+    const i = +k; if (a[1] !== t) continue;
+    const q = M.p[i], sw = q.detteSw, rs = q.detteRes;
+    const cible = tourDe(M, i) >= t ? M.caution0 : Math.min(M.caution0, (M.T - t + 1) * c);
+    const cau = Math.max(0, cible - q.caution);
+    q.sortie += sw + rs + cau; q.detteSw = 0; q.detteRes = 0; q.caution += cau;
+    M.avanceEnCours -= sw; M.reserve += rs;
+    note(M, t, i, "revient : rembourse " + F(sw + rs) + (cau ? " et reconstitue sa caution (" + F(cau) + ")" : ""), "retour");
+  }
+  let manque = 0;
+  for (let i = 0; i < M.N; i++) {
+    const q = M.p[i], du = c;
+    if (!absent(M, i, t)) { q.sortie += du; note(M, t, i, "paie " + F(du), "paie"); continue; }
+    let besoin = du;
+    const xg = Math.min(q.bloque, besoin); q.bloque -= xg; besoin -= xg;
+    const xc = Math.min(q.caution, besoin); q.caution -= xc; besoin -= xc;
+    const xr = Math.min(M.reserve, besoin); M.reserve -= xr; besoin -= xr; q.detteRes += xr;
+    const xs = Math.min(besoin, Math.max(0, M.plafondSw - M.avanceEnCours));
+    q.detteSw += xs; M.avanceEnCours += xs; besoin -= xs;
+    q.detteRes += besoin; manque += besoin;
+    // la penalite ne se prend que sur son argent, et jamais avant ses mises a venir
+    let pen = Math.min(pct(du, REGLES.penalite), Math.max(0, q.bloque + q.caution - (M.T - t) * c));
+    const pg = Math.min(q.bloque, pen); q.bloque -= pg; pen -= pg;
+    const pc = Math.min(q.caution, pen); q.caution -= pc;
+    M.reserve += pg + pc; q.penalites += pg + pc; q.manquees += 1;
+    M.avanceMax = Math.max(M.avanceMax, M.avanceEnCours);
+    const parts = [];
+    if (xg) parts.push("ce qui était gardé de sa cagnotte " + F(xg));
+    if (xc) parts.push("sa caution " + F(xc));
+    if (xr) parts.push("la réserve " + F(xr));
+    if (xs) parts.push("une avance de SwimPay " + F(xs));
+    if (besoin) parts.push(F(besoin) + " différés");
+    note(M, t, i, "échéance manquée, couverte par " + parts.join(", ") + (pg + pc ? " (pénalité " + F(pg + pc) + ")" : ""), "manque");
+  }
+  // deblocage progressif : ce qui est garde redescend a ce qu'il doit encore
+  for (let i = 0; i < M.N; i++) {
+    const q = M.p[i];
+    if (tourDe(M, i) < t && !absent(M, i, t) && !q.detteSw && !q.detteRes) {
+      const r = ajuste(M, i, t);
+      if (r) { q.liberes += r; q.liberesTour = r; note(M, t, i, "sa mise est payée : " + F(r) + " lui sont rendus", "rendu"); }
+    }
+  }
+  const gagnants = []; for (let i = 0; i < M.N; i++) if (tourDe(M, i) === t) gagnants.push(i);
+  gagnants.forEach((g, k) => {
+    const q = M.p[g];
+    M.revenu += M.frais; M.reserve += M.mise;
+    let net = M.cagnotte - M.frais - M.mise;
+    const part = Math.floor(manque / gagnants.length) + (k < manque % gagnants.length ? 1 : 0);
+    q.differe += part; net -= part;
+    // sa cagnotte rembourse d'abord ses propres dettes
+    let x = Math.min(net, q.detteSw); net -= x; q.detteSw -= x; M.avanceEnCours -= x;
+    x = Math.min(net, q.detteRes); net -= x; q.detteRes -= x; M.reserve += x;
+    const restantes = (M.T - t) * c;
+    const libre = absent(M, g, t) ? 0 : Math.max(0, net - Math.max(0, restantes - q.caution));
+    q.entree += libre; q.bloque += net - libre;
+    let rendu = libre;
+    if (!absent(M, g, t) && !q.detteSw && !q.detteRes) rendu += ajuste(M, g, t);
+    q.libre = rendu;
+    q.gain = { t, net, restantes, gardeCagnotte: q.bloque, gardeCaution: Math.min(q.caution, restantes), cautionRendue: rendu - libre };
+    note(M, t, g, "gagne la cagnotte : " + F(rendu) + " rendus tout de suite, " + F(q.bloque + Math.min(q.caution, restantes)) + " gardés pour ses mises restantes" + (part ? ", " + F(part) + " versés à la clôture" : ""), "gain");
+  });
+}
+function cloture(M) {
+  while (M.tour < M.T) tourSuivant(M);
+  if (M.clos) return;
+  const t = M.T + 1;
+  for (let i = 0; i < M.N; i++) {
+    const q = M.p[i]; let x;
+    x = Math.min(q.bloque, q.detteSw); q.bloque -= x; q.detteSw -= x; M.avanceEnCours -= x;
+    x = Math.min(q.bloque, q.detteRes); q.bloque -= x; q.detteRes -= x; M.reserve += x;
+    x = Math.min(q.caution, q.detteSw); q.caution -= x; q.detteSw -= x; M.avanceEnCours -= x;
+    x = Math.min(q.caution, q.detteRes); q.caution -= x; q.detteRes -= x; M.reserve += x;
+    q.rendu = q.bloque + q.caution; q.entree += q.rendu;
+    if (q.rendu) note(M, t, i, "récupère " + F(q.rendu) + " (sa caution et ce qui restait gardé)", "rendu");
+    q.bloque = 0; q.caution = 0;
+  }
+  for (let i = 0; i < M.N; i++) {
+    const q = M.p[i]; if (!q.differe) continue;
+    // ce qu'on lui doit regle d'abord ce qu'il doit encore
+    let x = Math.min(q.differe, q.detteSw); q.differe -= x; q.detteSw -= x; M.avanceEnCours -= x; M.reserve -= x;
+    x = Math.min(q.differe, q.detteRes); q.differe -= x; q.detteRes -= x;
+    if (q.differe) { M.reserve -= q.differe; q.entree += q.differe; note(M, t, i, "reçoit sa part différée : " + F(q.differe), "rendu"); }
+  }
+  M.perteSw = M.p.reduce((s, q) => s + q.detteSw, 0);
+  for (let i = 0; i < M.N; i++) if (estDernier(M, tourDe(M, i))) {
+    const b = Math.min(M.reserve, M.bonus); M.reserve -= b; M.p[i].entree += b; M.p[i].bonusRecu = b;
+    note(M, t, i, "bonus des derniers : " + F(b), "gain");
+  }
+  let fideles = []; for (let i = 0; i < M.N; i++) if (!M.p[i].manquees) fideles.push(i);
+  if (!fideles.length) fideles = M.p.map((_, i) => i);
+  const reste0 = M.reserve;
+  const part = Math.floor(M.reserve / fideles.length), reste = M.reserve % fideles.length;
+  fideles.forEach((i, k) => { const v = part + (k < reste ? 1 : 0); M.p[i].entree += v; M.p[i].partReserve = v; });
+  note(M, t, -1, "la réserve restante (" + F(reste0) + ") est partagée entre les " + fideles.length + " membres qui n'ont jamais manqué une échéance", "rendu");
+  M.reserve = 0; M.clos = true;
+}
+const conserve = (M) => M.p.reduce((a, q) => a + q.sortie, 0) + M.perteSw === M.p.reduce((a, q) => a + q.entree, 0) + M.revenu;
+
+
+/* ======================= outils ======================= */
+const NBSP = " ";
+const F = (n) => (n < 0 ? "−" : "") + Math.abs(Math.round(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, NBSP) + NBSP + "F";
+const Fs = (n) => (n > 0 ? "+" : "") + F(n);
+const echappe = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const chiffres = (s) => String(s).replace(/\D/g, "");
+const groupe3 = (s) => s.replace(/\B(?=(\d{3})+(?!\d))/g, NBSP);
+
+const RYTHMES = {
+  jour:    { lib: "Chaque jour",    un: "jour",    plur: "jours" },
+  semaine: { lib: "Chaque semaine", un: "semaine", plur: "semaines" },
+  mois:    { lib: "Chaque mois",    un: "mois",    plur: "mois" },
+};
+const duree = (r, T) => T + " " + (T > 1 ? RYTHMES[r].plur : RYTHMES[r].un);
+const NOMS = ["Vous", "Koffi N.", "Aya T.", "Yao K.", "Mariam D.", "Ibrahim S.", "Adjoua B.", "Moussa C.", "Fatou O.", "Serge A.", "Ama Y.", "Drissa F.", "Clarisse E.", "Seydou B.", "Nadia G.", "Paul-Henri Z.", "Kadiatou M.", "Jean-Marc L.", "Rokia S.", "Brice T.", "Salimata K.", "Hervé D.", "Assita N.", "Didier Y.", "Mireille K.", "Oumar T.", "Esther A.", "Lassina C.", "Prisca B.", "Karim O.", "Awa K.", "Rodrigue E."];
+const initiales = (id) => id === 0 ? "V" : NOMS[id].replace(".", "").split(/[\s-]/).map((m) => m[0]).join("").slice(0, 2).toUpperCase();
+const LIMITES = { cMin: 500, cMax: 1000000, tMin: 2, tMax: 30, nMax: 30 };
+
+/* les regles des formats : N = B x T, B dans {1,2,3}, N <= 30 */
+function valide(cfg) {
+  const err = [];
+  if (!(cfg.c >= LIMITES.cMin)) err.push("La cotisation doit être d'au moins " + F(LIMITES.cMin) + ".");
+  if (cfg.c > LIMITES.cMax) err.push("La cotisation ne peut pas dépasser " + F(LIMITES.cMax) + ".");
+  if (!(cfg.T >= LIMITES.tMin && cfg.T <= LIMITES.tMax)) err.push("Le nombre de tours va de " + LIMITES.tMin + " à " + LIMITES.tMax + ".");
+  if (cfg.T * cfg.B > LIMITES.nMax) err.push(cfg.T + " tours × " + cfg.B + " gagnant" + (cfg.B > 1 ? "s" : "") + " par tour = " + cfg.T * cfg.B + " membres : 30 au plus.");
+  return err;
+}
+const N = (cfg) => cfg.T * cfg.B;
+const cagnotteDe = (cfg) => cfg.T * cfg.c;
+
+/* un scenario = des absences par PLACE (rang de tirage), comme tontine-v2.py */
+const SCENARIOS = [
+  { id: "joyeux", lib: "Tout le monde paie", det: "Le cas le plus fréquent.", abs: () => ({}) },
+  { id: "retard", lib: "Un retardataire revient", det: "Un membre du milieu manque deux échéances puis rattrape.", abs: (n, T, B) => { const p = B * Math.floor(T / 2); return T >= 5 ? { [p]: [3, 5] } : { [p]: [2, 3] }; } },
+  { id: "abandon", lib: "Un membre abandonne avant de gagner", det: "Il arrête de payer bien avant son tour.", abs: (n, T, B) => { const tour = Math.min(T, Math.max(3, Math.ceil(T * .7))); return { [B * (tour - 1)]: [Math.max(2, Math.min(tour - 1, Math.ceil(T * .4))), null] }; } },
+  { id: "fuite1", lib: "Le premier gagnant fuit", det: "Il touche au tour 1, puis ne paie plus rien. Ce qui a été gardé paie ses mises.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < B; i++) o[i] = [2, null]; return o; } },
+  { id: "tiers", lib: "Le premier tiers fuit", det: "Les gagnants des premiers tours ne paient plus rien après leur gain.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < B * Math.ceil(T / 3); i++) o[i] = [Math.floor(i / B) + 2, null]; return o; } },
+  { id: "presque", lib: "Tous fuient sauf les derniers", det: "Chaque gagnant arrête de payer après son gain. Le pire cas.", abs: (n, T, B) => { const o = {}; for (let i = 0; i < n - B; i++) o[i] = [Math.floor(i / B) + 2, null]; return o; } },
+];
+
+/* les offres qui arrivent par notification (exemples de maquette) */
+const OFFRES = {
+  invitation: { type: "invitation", nom: "Tontine du bureau", orga: 1, cfg: { rythme: "semaine", c: 10000, T: 8, B: 1, mode: "invitation" }, deja: [1, 2, 3, 4, 5] },
+  global: { type: "global", nom: "Rentrée scolaire", orga: 9, cfg: { rythme: "jour", c: 5000, T: 7, B: 2, mode: "ouverte" }, deja: [9, 10, 11, 12, 13, 14, 15, 16] },
+};
+
+/* ======================= etat ======================= */
+const neuf = () => ({
+  ecran: "accueil", pile: [], sens: "avant",
+  role: null, nom: "Ma tontine", orga: 0,
+  cfg: { rythme: "mois", c: 10000, T: 10, B: 1, mode: "invitation" },
+  saisie: { c: "10000", T: "10" },
+  groupe: [], flux: [], parti: false, invites: false,
+  acceptes: [], jaiAccepte: false,
+  tirage: null, gestes: 0, monGeste: null, ordre: null, revelees: 0,
+  scenario: "joyeux", M: null, tourVu: 0, retire: false,
+  pin: [], feuille: null, notif: null, notifVue: false, offre: null, solde: 148350,
+  soldeTontine: 0, dernierPrelev: null, credite: false, credit: { n: 1, source: "compte" },
+});
+let E = neuf();
+let minuteur = null;
+const minuter = (fn, ms) => { clearTimeout(minuteur); minuteur = setTimeout(fn, ms); };
+const arreter = () => { clearTimeout(minuteur); minuteur = null; };
+
+const maPlace = () => E.ordre ? E.ordre.indexOf(0) : -1;
+const nomId = (id) => NOMS[id];
+const nomPlace = (p) => E.ordre ? nomId(E.ordre[p]) : "";
+
+function relancerMoteur() {
+  if (!E.ordre) { E.M = null; return; }
+  const tour = E.M ? E.M.tour : 0, clos = E.M ? E.M.clos : false;
+  const sc = SCENARIOS.find((s) => s.id === E.scenario), cfg = E.cfg;
+  E.M = creeMoteur(N(cfg), cfg.T, cfg.B, cfg.c, sc.abs(N(cfg), cfg.T, cfg.B));
+  while (E.M.tour < tour) tourSuivant(E.M);
+  if (clos) cloture(E.M);
+}
+
+/* ======================= navigation ======================= */
+const RACINES = ["accueil", "tontines", "activite", "profil"];
+function aller(ecran, opts = {}) {
+  arreter();
+  if (RACINES.includes(ecran)) E.pile = [];
+  else if (!opts.remplacer) E.pile.push(E.ecran);
+  E.sens = opts.retour ? "retour" : "avant"; E.ecran = ecran; fermerFeuille(true); rendre();
+  if (ecran === "recherche" || ecran === "salle") minuter(boucleRecrutement, 800);
+}
+function retour() { arreter(); E.ecran = E.pile.pop() || "accueil"; E.sens = "retour"; fermerFeuille(true); rendre(); }
+
+/* ======================= briques ======================= */
+const hero = (h, haut, dessus) => "<div class='hero' style='min-height:" + h + "'><div class='haut'>" + haut + "</div><div class='dessus'>" + dessus + "</div></div>";
+const btnRetour = "<button class='rond' data-retour aria-label='Retour'>←</button><div style='flex:1'></div>";
+const titre = (t, px, sur) => (sur ? "<span class='surtitre'>" + sur + "</span>" : "") + "<h1 class='titre' style='font-size:" + px + "px'>" + t + "</h1>";
+const montantHTML = (m) => F(m).replace(NBSP + "F", "<small>" + NBSP + "F</small>");
+const ICO = {
+  accueil: "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8'><path d='M4 11 12 4l8 7v9h-5v-6H9v6H4z'/></svg>",
+  tontine: "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8'><circle cx='12' cy='12' r='8'/><circle cx='12' cy='4' r='2' fill='currentColor'/><circle cx='19' cy='15' r='2' fill='currentColor'/><circle cx='5' cy='15' r='2' fill='currentColor'/></svg>",
+  activite: "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8'><path d='M4 7h16M4 12h16M4 17h10'/></svg>",
+  profil: "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8'><circle cx='12' cy='8' r='4'/><path d='M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6'/></svg>",
+};
+function nav() {
+  const onglets = [["accueil", "Accueil"], ["tontines", "Tontine"], ["activite", "Activité"], ["profil", "Profil"]];
+  const pastille = E.notif && !E.notifVue ? "tontines" : null;
+  return "<nav class='nav' aria-label='Navigation principale'>" + onglets.map(([k, lib]) =>
+    "<button data-onglet='" + k + "' aria-label='" + lib + "'" + (E.ecran === k ? " aria-current='page'" : "") + ">" + ICO[k === "tontines" ? "tontine" : k] + (pastille === k ? "<span class='pastille'></span>" : "") + "</button>").join("") + "</nav>";
+}
+function resumeFormat(cfg) {
+  return N(cfg) + " membres · " + cfg.T + " tours · " + cfg.B + " gagnant" + (cfg.B > 1 ? "s" : "") + " par tour";
+}
+function carteMaTontine() {
+  const M = E.M;
+  if (!M) {
+    if (E.role && E.groupe.length) return "<button class='carte-t active' data-aller='" + (E.role === "organisateur" ? "recherche" : "salle") + "'><div class='l1'><b>" + echappe(E.nom) + "</b><span class='etiquette a'>En recrutement</span></div><div class='barre-places'>" + Array.from({ length: N(E.cfg) }, (_, i) => "<span class='" + (i < E.groupe.length ? "fait" : "") + "'></span>").join("") + "</div><div class='l2'>" + E.groupe.length + " / " + N(E.cfg) + " membres · " + F(E.cfg.c) + " " + RYTHMES[E.cfg.rythme].lib.toLowerCase() + "</div></button>";
+    return "";
+  }
+  const p = maPlace(), mt = tourDe(M, p);
+  const etat = M.clos ? "<span class='etiquette'>Terminée</span>" : "<span class='etiquette v'>Tour " + Math.max(1, M.tour) + " / " + M.T + "</span>";
+  return "<button class='carte-t active' data-aller='tontine'><div class='l1'><b>" + echappe(E.nom) + "</b>" + etat + "</div>" +
+    "<div class='barre-places'>" + Array.from({ length: M.T }, (_, i) => "<span class='" + (i < M.tour ? "fait" : "") + "'></span>").join("") + "</div>" +
+    "<div class='l2'>Ma place : <b>tour " + mt + "</b> · " + F(M.c) + " par échéance · cagnotte <b>" + F(M.cagnotte) + "</b></div></button>";
+}
+
+/* ======================= ecrans ======================= */
+const ECRANS = {
+  accueil() {
+    return hero("44%", "<span class='rond' style='cursor:default;font-weight:700;font-size:13px'>AW</span><span style='flex:1;font-size:14px;line-height:1.2'>Bonjour Awa<small style='display:block;opacity:.7;font-size:12px'>Compte personnel</small></span>",
+      "<div class='plaque'><div class='lp'><span>Solde SwimPay</span></div><div class='montant'>" + montantHTML(E.solde) + "</div><div class='lp'><span>Vers tous les Mobile Money et banques</span></div></div>") +
+      "<div class='bas'>" +
+        "<div class='actions'>" +
+          "<button class='action-ronde'><span>+</span>Recharger</button>" +
+          "<button class='action-ronde'><span>↗</span>Envoyer</button>" +
+          "<button class='action-ronde'><span>↙</span>Recevoir</button>" +
+          "<button class='action-ronde acide' data-onglet='tontines'><span>T</span>Tontine</button>" +
+        "</div>" +
+        (carteMaTontine() || "<button class='carte-t' data-onglet='tontines'><div class='l1'><b>Tontine</b><span class='etiquette v'>Nouveau</span></div><div class='l2'>Cotise avec tes proches, ou rejoins un événement ouvert. <b>Personne ne peut partir avec l'argent.</b></div></button>") +
+        "<p class='groupe-titre'>Dernières opérations</p>" +
+        "<div class='tour-l'><span class='num' style='font-size:15px'>↙</span><span class='qui'>Aya T.<small>Reçu sur Wave</small></span><span class='st v'>+" + F(12500) + "</span></div>" +
+        "<div class='tour-l'><span class='num' style='font-size:15px'>+</span><span class='qui'>Recharge<small>Depuis Orange Money</small></span><span class='st'>+" + F(20000) + "</span></div>" +
+      "</div>" + nav();
+  },
+
+  tontines() {
+    const inv = E.notif && !(E.role === "membre" && E.offre === E.notif) ? OFFRES[E.notif] : null;
+    return hero("26%", "<div style='flex:1'></div>", titre("Tontine", 58, "Cotiser ensemble")) +
+      "<div class='bas'>" +
+        (carteMaTontine() ? "<p class='groupe-titre'>Ma tontine</p>" + carteMaTontine() : "") +
+        (inv ? "<p class='groupe-titre'>" + (inv.type === "invitation" ? "Invitation reçue" : "Événement ouvert, pour toi") + "</p>" +
+          "<button class='carte-t' data-offre='" + inv.type + "'><div class='l1'><b>" + echappe(inv.nom) + "</b><span class='etiquette " + (inv.type === "invitation" ? "v" : "a") + "'>" + (inv.type === "invitation" ? "Invitation" : "Ouvert") + "</span></div><div class='l2'>" + (inv.type === "invitation" ? "De <b>" + nomId(inv.orga) + "</b> · " : "") + F(inv.cfg.c) + " " + RYTHMES[inv.cfg.rythme].lib.toLowerCase() + " · " + resumeFormat(inv.cfg) + "</div><div class='l2'>Cagnotte de chaque gagnant : <b>" + F(cagnotteDe(inv.cfg)) + "</b></div></button>" : "") +
+        "<p class='groupe-titre'>Événements ouverts</p>" +
+        "<button class='carte-t' data-offre='global'><div class='l1'><b>" + OFFRES.global.nom + "</b><span>" + OFFRES.global.deja.length + " / " + N(OFFRES.global.cfg) + " places</span></div><div class='l2'>" + F(OFFRES.global.cfg.c) + " chaque jour · " + duree("jour", OFFRES.global.cfg.T) + " · cagnotte <b>" + F(cagnotteDe(OFFRES.global.cfg)) + "</b></div></button>" +
+        "<div class='bloc'><h3>Les règles, les mêmes pour tous</h3><div>Une <b>caution de 25 %</b> de la cagnotte, rendue au fil de tes mises après ton gain. Le jour de ton gain, SwimPay <b>ne garde que ce que tu dois encore</b>, ta caution d'abord ; tout le reste t'est rendu. À chaque mise payée, on t'en rend un peu plus.</div></div>" +
+        "<div class='pousse'></div>" +
+        "<button class='pilule blanche' data-aller='creer'>Créer une tontine</button>" +
+      "</div>" + nav();
+  },
+
+  creer() {
+    const cfg = E.cfg;
+    return hero("20%", btnRetour, titre("Nouvelle tontine", 40)) +
+      "<div class='bas'>" +
+        "<div class='champ'><label for='f-nom'>Le nom</label><div class='saisie-l'><input id='f-nom' value='" + echappe(E.nom) + "' maxlength='32' autocomplete='off'></div></div>" +
+        "<div class='champ'><label>Le rythme</label><div class='puces'>" + Object.entries(RYTHMES).map(([k, v]) => "<button class='puce' data-rythme='" + k + "' aria-pressed='" + (cfg.rythme === k) + "'>" + v.lib + "</button>").join("") + "</div></div>" +
+        "<div class='deux'>" +
+          "<div class='champ'><label for='f-c'>Cotisation</label><div class='saisie-l' id='l-c'><input id='f-c' inputmode='numeric' value='" + groupe3(E.saisie.c) + "' autocomplete='off'><span>F</span></div></div>" +
+          "<div class='champ'><label for='f-t'>Durée</label><div class='saisie-l' id='l-t'><input id='f-t' inputmode='numeric' value='" + E.saisie.T + "' autocomplete='off'><span id='u-t'>" + (cfg.T > 1 ? RYTHMES[cfg.rythme].plur : RYTHMES[cfg.rythme].un) + "</span></div></div>" +
+        "</div>" +
+        "<div class='champ'><label>Gagnants par tour</label><div class='puces'>" + [1, 2, 3].map((b) => "<button class='puce' data-b='" + b + "' aria-pressed='" + (cfg.B === b) + "'>" + b + "</button>").join("") + "</div></div>" +
+        "<div class='champ'><label>Qui peut entrer</label><div class='puces'>" +
+          "<button class='puce' data-mode='invitation' aria-pressed='" + (cfg.mode === "invitation") + "'>Sur invitation</button>" +
+          "<button class='puce' data-mode='ouverte' aria-pressed='" + (cfg.mode === "ouverte") + "'>Ouverte à tous</button></div></div>" +
+        "<div id='recap-creer'>" + recapCreer() + "</div>" +
+      "</div>";
+  },
+
+  chiffres() {
+    const cfg = E.cfg, g = cagnotteDe(cfg), c = cfg.c, T = cfg.T;
+    const net = g - pct(g, REGLES.frais) - pct(g, REGLES.reserve), libreAu = (k) => Math.max(0, net + pct(g, REGLES.caution) - (T - k) * c), mil = Math.ceil(T / 2);
+    const membre = E.role === "membre";
+    return hero("28%", btnRetour, titre(membre ? echappe(E.nom) : "Mes chiffres", 44, membre ? (E.offre === "invitation" ? "Invitation de " + nomId(E.orga) : "Événement ouvert") : "Ce que chaque membre verra") +
+      "<div class='plaque'><div class='lp'><span>" + F(c) + " " + RYTHMES[cfg.rythme].lib.toLowerCase() + ", pendant " + duree(cfg.rythme, T) + "</span></div><div class='lp'><span>" + resumeFormat(cfg) + "</span></div></div>") +
+      "<div class='bas'>" +
+        "<div class='recap'>" +
+          "<div><span>Prélevé en acceptant le contrat</span><b>" + F(pct(g, REGLES.caution) + c) + "</b></div>" +
+          "<div class='moins'><span>dont caution (" + REGLES.caution + " % de la cagnotte), rendue au fil des mises</span><b>" + F(pct(g, REGLES.caution)) + "</b></div>" +
+          "<div class='moins'><span>dont première mise</span><b>" + F(c) + "</b></div>" +
+          "<div><span>Cagnotte de chaque gagnant</span><b>" + F(g) + "</b></div>" +
+          "<div class='moins'><span>Frais du système (" + REGLES.frais + " %)</span><b>−" + F(pct(g, REGLES.frais)) + "</b></div>" +
+          "<div class='moins'><span>Réserve de secours (" + REGLES.reserve + " %), rendue à la fin</span><b>−" + F(pct(g, REGLES.reserve)) + "</b></div></div>" +
+        "<p class='groupe-titre'>Ce qu'on retire le jour du gain</p>" +
+        "<div class='places'><div><small>Tiré au tour 1</small><b>" + F(libreAu(1)) + "</b></div><div><small>Tiré au tour " + mil + "</small><b>" + F(libreAu(mil)) + "</b></div><div><small>Tiré au tour " + T + "</small><b>" + F(libreAu(T)) + "</b></div></div>" +
+        "<p class='aide'>Le jour du gain, SwimPay <b>ne garde que les mises qui restent à payer</b>, pris d'abord sur la caution. Tout le reste est rendu. Puis, à chaque mise payée, on rend un peu plus. La place dépend du tirage.</p>" +
+        "<div class='bloc alerte'><h3>En cas de retard ou d'arrêt</h3><div>La caution paie l'échéance, avec <b>5 % de pénalité</b>. Si on arrête de payer, on ne prend sur la caution <b>que ce qui a été payé à sa place</b> ; le reste est rendu à la fin.</div></div>" +
+        (membre ? "<button class='pilule blanche' data-rejoindre>Rejoindre la tontine</button><p class='aide' style='text-align:center'>Rien n'est prélevé avant le contrat. Tu peux te retirer tant que la tontine n'a pas commencé.</p>"
+                : "<button class='pilule blanche' data-publier>" + (cfg.mode === "ouverte" ? "Publier l'événement" : "Inviter des membres") + "</button>") +
+      "</div>";
+  },
+
+  /* l'organisateur voit le recrutement en direct */
+  recherche() {
+    const n = N(E.cfg), k = E.groupe.length, plein = k >= n;
+    return hero("30%", "<button class='rond' data-onglet='tontines' aria-label='Retour'>←</button><div style='flex:1'></div><span class='direct'>En direct</span>",
+      titre(E.cfg.mode === "ouverte" ? "Recherche de participants" : "Invitations envoyées", 36, echappe(E.nom) + " · vue de l'organisateur") +
+      "<div class='plaque'><div class='lp'><span>Membres</span><b>" + k + " / " + n + "</b></div><div class='echelle'>" + Array.from({ length: n }, (_, i) => "<span class='" + (i < k ? "fait" : "") + "'></span>").join("") + "</div></div>") +
+      "<div class='bas'>" +
+        "<p class='aide'>" + (E.cfg.mode === "ouverte" ? "Ton événement est visible par les membres SwimPay. Chacun voit les mêmes chiffres avant de rejoindre." : "Tes contacts ont reçu l'invitation. Ils voient les mêmes chiffres avant de rejoindre.") + " Un membre peut se retirer tant que la tontine n'a pas commencé.</p>" +
+        "<p class='groupe-titre'>Ce qui se passe</p>" + fluxHTML() +
+        "<div class='pousse'></div>" +
+        "<button class='pilule commencer" + (plein ? " pret" : "") + "' data-commencer-orga" + (plein ? "" : " disabled") + ">" + (plein ? "Commencer la tontine" : "Commencer la tontine · " + (n - k) + " place" + (n - k > 1 ? "s" : "") + " à pourvoir") + "</button>" +
+      "</div>";
+  },
+
+  /* le membre attend que le groupe soit complet */
+  salle() {
+    const n = N(E.cfg), k = E.groupe.length;
+    return hero("30%", "<button class='rond' data-onglet='tontines' aria-label='Retour'>←</button><div style='flex:1'></div><span class='direct'>En direct</span>",
+      titre("Salle d'attente", 44, echappe(E.nom)) +
+      "<div class='plaque'><div class='lp'><span>Membres</span><b>" + k + " / " + n + "</b></div><div class='echelle'>" + Array.from({ length: n }, (_, i) => "<span class='" + (i < k ? "fait" : "") + "'></span>").join("") + "</div></div>") +
+      "<div class='bas'>" +
+        "<p class='aide'>Organisée par <b>" + nomId(E.orga) + "</b>. Quand le groupe est complet, l'organisateur lance la tontine, et chacun accepte le contrat.</p>" +
+        "<p class='groupe-titre'>Ce qui se passe</p>" + fluxHTML() +
+        "<div class='pousse'></div>" +
+        "<button class='pilule contour' data-seretirer>Me retirer</button>" +
+      "</div>";
+  },
+
+  /* tous les membres partagent cet ecran */
+  contrat() {
+    const cfg = E.cfg, g = cagnotteDe(cfg), n = N(cfg), acc = E.acceptes.length, tous = acc >= n;
+    return hero("26%", "<div style='flex:1'></div><span class='direct'>" + n + " membres sur cet écran</span>",
+      titre("Le contrat", 50, echappe(E.nom))) +
+      "<div class='bas'>" +
+        "<div class='recap'>" +
+          "<div><span>Cotisation</span><b>" + F(cfg.c) + " " + RYTHMES[cfg.rythme].lib.toLowerCase() + "</b></div>" +
+          "<div><span>Durée</span><b>" + duree(cfg.rythme, cfg.T) + " · " + resumeFormat(cfg) + "</b></div>" +
+          "<div><span>Cagnotte de chaque gagnant</span><b>" + F(g) + "</b></div>" +
+          "<div><span>Prélevé maintenant</span><b>" + F(pct(g, REGLES.caution) + cfg.c) + "</b></div>" +
+          "<div><span>Frais du système</span><b>3 % au gain</b></div></div>" +
+        "<p class='aide'>Après le tirage, <b>plus rien ne change</b> : montant, rythme, membres, ordre. L'ordre est tiré au sort par le système, en direct, devant tous.</p>" +
+        "<p class='groupe-titre'>Les membres · " + acc + " / " + n + " ont accepté</p>" +
+        "<div>" + E.groupe.map((id) => { const ok = E.acceptes.includes(id);
+          return "<div class='membre'><span class='ini" + (id === 0 ? " vous" : "") + "'>" + initiales(id) + "</span><span class='nom'>" + nomId(id) + (id === E.orga ? "<small>Organisateur</small>" : "") + "</span><span class='etat " + (ok ? "v" : "") + "'>" + (ok ? "A accepté ✓" : "Lit le contrat…") + "</span></div>"; }).join("") + "</div>" +
+        (E.jaiAccepte ? (tous ? "<div class='bloc ok'><h3>Tout le monde a accepté</h3>Le tirage commence…</div>" : "<div class='bloc'><h3>Tu as accepté</h3>On attend les autres membres.</div>")
+          : "<button class='pilule blanche' data-accepter>J'accepte le contrat</button>") +
+      "</div>";
+  },
+
+  tirage() {
+    const n = N(E.cfg), t = E.tirage, fini = E.ordre && E.revelees >= n;
+    let liste = "";
+    if (E.ordre) liste = E.ordre.slice(0, E.revelees).map((id, p) => "<div class='revele" + (id === 0 ? " vous" : "") + "'><span class='num'>" + (Math.floor(p / E.cfg.B) + 1) + "</span><span class='qui'>" + nomId(id) + "</span><span class='etat'>" + (id === 0 ? "C'est vous" : "") + "</span></div>").join("");
+    return hero("24%", "<div style='flex:1'></div><span class='direct'>En direct · " + n + " membres</span>", titre("Le tirage", 50, "Fait par le système, devant tous")) +
+      "<div class='bas'>" +
+        "<div class='etape fait'><span class='n'>1</span><div class='t'>SwimPay a publié l'empreinte de son nombre secret<small>Il ne peut plus le changer sans que ça se voie.</small><span class='empreinte'>" + t.empreinte + "</span></div></div>" +
+        "<div class='etape " + (E.gestes >= n ? "fait" : "") + "'><span class='n'>2</span><div class='t'>Chaque membre ajoute son geste · " + E.gestes + " / " + n + "<small>Personne ne connaît le résultat à l'avance, pas même SwimPay.</small>" +
+          (E.monGeste ? "<span class='empreinte'>Ton geste : " + E.monGeste + "</span>" : "<button class='geste' data-geste>Touche ici pour ajouter ton geste</button>") + "</div></div>" +
+        "<div class='etape " + (fini ? "fait" : "") + "'><span class='n'>3</span><div class='t'>L'ordre des gagnants<small>" + (E.ordre ? (fini ? "Définitif. Chacun peut le vérifier." : "Le système révèle l'ordre…") : "Dès que tous les gestes sont là.") + "</small></div></div>" +
+        liste +
+        (fini ? "<button class='pilule contour' data-verifier>Vérifier le tirage</button><button class='pilule blanche' data-aller-racine='tontine'>Voir ma tontine</button>" : "") +
+      "</div>";
+  },
+
+  tontine() {
+    const M = E.M; if (!M) return ECRANS.tontines();
+    const p = maPlace(), q = M.p[p], monTour = tourDe(M, p);
+    const etat = M.clos ? "Terminée" : M.tour === 0 ? "Tirage fait, 1re échéance à venir" : "Tour " + M.tour + " sur " + M.T;
+    const tours = [];
+    for (let t = 1; t <= M.T; t++) {
+      const qui = []; for (let i = 0; i < M.N; i++) if (tourDe(M, i) === t) qui.push(nomPlace(i));
+      tours.push("<div class='tour-l " + (t === M.tour && !M.clos ? "encours" : t < M.tour || M.clos ? "passe" : "") + "'><span class='num'>" + t + "</span><span class='qui'>" + qui.join(", ") + "<small>" + F(M.cagnotte) + (estDernier(M, t) ? " · + bonus des derniers" : "") + "</small></span><span class='st " + (t <= M.tour ? "v" : "") + "'>" + (t <= M.tour ? "Versée" : "À venir") + "</span></div>");
+    }
+    return hero("40%", "<button class='rond' data-onglet='tontines' aria-label='Retour'>←</button><span class='surtitre' style='flex:1;text-align:center'>" + etat + "</span><button class='rond' data-aller='journal' aria-label='Journal'>≡</button>",
+      titre("Ma place : tour " + monTour, 42, echappe(E.nom) + " · " + F(E.cfg.c) + " par échéance") +
+      "<div class='plaque'><div class='lp'><span>Solde tontine</span></div><div class='montant'>" + montantHTML(E.soldeTontine) + "</div>" +
+      "<div class='lp'><span>Caution</span><b>" + F(q.caution) + "</b></div>" +
+      (!M.clos && M.tour < M.T ? "<div class='lp'><span>Prochaine échéance · tour " + (M.tour + 1) + "</span><b>" + F(M.c) + "</b></div>" : "") +
+      (q.bloque ? "<div class='lp'><span>Gardé sur ta cagnotte, pour tes mises</span><b>" + F(q.bloque) + "</b></div>" : "") + "</div>") +
+      "<div class='bas'>" +
+        infoPrelevement(M, q) +
+        (M.absences[p] ? "<div class='bloc alerte'><h3>Scénario : c'est toi qui manques des échéances</h3>Le tableau du moteur montre ce que le système prend sur ta caution, et ce qu'il te rend.</div>" : "") +
+        "<div class='boutons'>" +
+          (M.clos ? "<button class='pilule blanche' data-aller='cloture' style='grid-column:1/-1'>Voir mon bilan</button>"
+                  : M.tour < M.T ? "<button class='pilule acide' data-credit style='grid-column:1/-1'>Ajouter du crédit</button>" + "<button class='pilule blanche' data-tour>Tour suivant (démo)</button><button class='pilule contour' data-aller='journal'>Le journal</button>"
+                  : "<button class='pilule blanche' data-cloturer style='grid-column:1/-1'>Clôturer la tontine</button>") +
+        "</div>" +
+        (q.libre !== null && !M.clos ? "<button class='pilule contour' data-aller='gain'>Revoir mon gain</button>" : "") +
+        "<p class='groupe-titre'>Les tours</p>" + tours.join("") +
+      "</div>";
+  },
+
+  gain() {
+    const M = E.M, p = maPlace(), q = M.p[p], t = tourDe(M, p), G = q.gain;
+    if (absent(M, p, t)) {
+      return hero("34%", btnRetour, titre("Ton tour est arrivé", 46, "Tour " + t) +
+        "<div class='plaque'><div class='lp'><span>Cagnotte, réservée à ce que tu dois</span></div><div class='montant'>" + montantHTML(G.net) + "</div></div>") +
+        "<div class='bas'><div class='bloc alerte'><h3>Tu as des échéances non payées</h3><div>Ta cagnotte arrive quand même à ta place, mais elle est <b>entièrement réservée</b> : elle rembourse d'abord ce qui a été payé pour toi.</div><div>Le reste t'est rendu à la clôture. Personne ne te prend plus que ce que tu dois.</div></div>" +
+        "<button class='pilule blanche' data-retour>Retour à la tontine</button></div>";
+    }
+    const garde = G.gardeCagnotte + G.gardeCaution, nb = Math.round(G.restantes / M.c);
+    return hero("38%", btnRetour, titre("Tu as gagné", 60, "Tour " + t) +
+      "<div class='plaque'><div class='lp'><span>Ta cagnotte</span></div><div class='montant'>" + montantHTML(M.cagnotte) + "</div></div>") +
+      "<div class='bas'>" +
+        "<div class='recap'>" +
+          "<div><span>Cagnotte</span><b>" + F(M.cagnotte) + "</b></div>" +
+          "<div class='moins'><span>Frais du système</span><b>−" + F(M.frais) + "</b></div>" +
+          "<div class='moins'><span>Réserve de secours, rendue à la fin</span><b>−" + F(M.mise) + "</b></div>" +
+          (q.differe ? "<div class='moins'><span>Versé à la clôture (d'autres n'ont pas payé)</span><b>−" + F(q.differe) + "</b></div>" : "") +
+          (G.gardeCagnotte ? "<div class='moins'><span>Gardé sur ta cagnotte pour tes mises</span><b>−" + F(G.gardeCagnotte) + "</b></div>" : "") +
+          (G.cautionRendue ? "<div><span>Ta caution, que tu ne dois plus</span><b>+" + F(G.cautionRendue) + "</b></div>" : "") +
+          "<div class='total libre'><span>Tu récupères maintenant</span><b>" + F(q.libre) + "</b></div></div>" +
+        (nb ? "<p class='aide'>Il te reste <b>" + nb + " mise" + (nb > 1 ? "s" : "") + "</b> à payer (" + F(G.restantes) + "). SwimPay garde exactement cette somme : ta caution d'abord" + (G.gardeCagnotte ? ", puis " + F(G.gardeCagnotte) + " de ta cagnotte" : "") + ". <b>À chaque mise payée, on t'en rend autant.</b></p>" : "<p class='aide'>Tu n'as plus de mise à payer : tout t'est rendu, ta caution comprise.</p>") +
+        (E.retire ? "<div class='bloc ok'><h3>C'est sur ton compte SwimPay</h3>" + F(q.libre) + " sont sur ton solde SwimPay. De là, tu peux les envoyer vers tes Mobile Money ou ta banque.</div>"
+                  : "<button class='pilule acide' data-retirer" + (q.libre ? "" : " disabled") + ">Mettre " + F(q.libre) + " sur mon compte SwimPay</button>") +
+        "<button class='pilule contour' data-retour>Retour à la tontine</button>" +
+      "</div>";
+  },
+
+  journal() {
+    const M = E.M, par = {};
+    M.journal.filter((j) => j.genre !== "paie").forEach((j) => { (par[j.t] = par[j.t] || []).push(j); });
+    const payes = (t) => M.journal.filter((j) => j.t === t && j.genre === "paie").length;
+    const html = [];
+    for (let t = M.tour + (M.clos ? 1 : 0); t >= 1; t--) {
+      html.push("<p class='jour'>" + (t > M.T ? "Clôture" : "Tour " + t) + "</p>");
+      if (t <= M.T) html.push("<div class='entree-j'><b>" + payes(t) + " membres ont payé de leur poche</b><small>Chaque paiement est enregistré, horodaté, visible par tous</small></div>");
+      (par[t] || []).forEach((j) => html.push("<div class='entree-j " + j.genre + "'><b>" + (j.i >= 0 ? echappe(nomPlace(j.i)) : "Le système") + "</b><small>" + echappe(j.texte) + "</small></div>"));
+    }
+    return hero("22%", btnRetour, titre("Le journal", 48, "Visible par tous les membres")) +
+      "<div class='bas'><p class='aide'>« J'ai payé » se vérifie ici. <b>Aucune capture d'écran n'est une preuve</b> : seul ce journal fait foi.</p>" +
+      (M.tour === 0 ? "<p class='aide'>Rien encore : la première échéance n'est pas passée.</p>" : html.join("")) + "</div>";
+  },
+
+  cloture() {
+    const M = E.M, p = maPlace(), q = M.p[p];
+    const rendu = q.rendu + q.partReserve + q.bonusRecu + q.differe + (E.creditRendu || 0);
+    return hero("36%", "<button class='rond' data-aller-racine='tontine' aria-label='Retour'>←</button><div style='flex:1'></div>",
+      titre("Tontine terminée", 50, "Mon bilan") +
+      "<div class='plaque'><div class='lp'><span>Versé sur ton compte SwimPay à la clôture</span></div><div class='montant'>" + montantHTML(rendu) + "</div></div>") +
+      "<div class='bas'>" +
+        "<div class='recap'>" +
+          "<div><span>Ta cagnotte, au tour " + tourDe(M, p) + "</span><b>" + F(M.cagnotte) + "</b></div>" +
+          "<div><span>Caution rendue</span><b>" + F(Math.min(q.rendu, M.caution0)) + "</b></div>" +
+          (q.rendu > M.caution0 ? "<div><span>Reste de ta cagnotte</span><b>" + F(q.rendu - M.caution0) + "</b></div>" : "") +
+          "<div><span>Ta part de la réserve de secours</span><b>" + F(q.partReserve) + "</b></div>" +
+          (q.bonusRecu ? "<div><span>Bonus des derniers</span><b>" + F(q.bonusRecu) + "</b></div>" : "") +
+          (q.differe ? "<div><span>Part de cagnotte versée à la clôture</span><b>" + F(q.differe) + "</b></div>" : "") +
+          (E.creditRendu ? "<div><span>Crédit tontine non utilisé</span><b>" + F(E.creditRendu) + "</b></div>" : "") +
+          "<div class='moins'><span>Frais du système payés</span><b>" + F(M.frais) + "</b></div>" +
+          (q.penalites ? "<div class='moins'><span>Pénalités de retard</span><b>" + F(q.penalites) + "</b></div>" : "") +
+        "</div>" +
+        "<button class='pilule contour' data-aller='journal'>Le journal complet</button>" +
+      "</div>";
+  },
+
+  activite() { return hero("26%", "<div style='flex:1'></div>", titre("Activité", 58)) + "<div class='bas'><div class='stub'>Hors de la démo tontine.</div></div>" + nav(); },
+  profil() { return hero("26%", "<div style='flex:1'></div>", titre("Profil", 58)) + "<div class='bas'><div class='stub'>Hors de la démo tontine.</div></div>" + nav(); },
+};
+
+function recapCreer() {
+  const cfg = E.cfg, err = valide(cfg), g = cagnotteDe(cfg);
+  if (err.length) return "<div class='bloc alerte'><h3>Format impossible</h3>" + err.map((e) => "<div>" + e + "</div>").join("") + "</div><button class='pilule blanche' disabled>Voir les chiffres</button>";
+  return "<div class='recap'>" +
+    "<div><span>Format</span><b>" + resumeFormat(cfg) + "</b></div>" +
+    "<div><span>Durée</span><b>" + duree(cfg.rythme, cfg.T) + "</b></div>" +
+    "<div><span>Cagnotte de chaque gagnant</span><b>" + F(g) + "</b></div>" +
+    "<div><span>Caution de chaque membre</span><b>" + F(pct(g, REGLES.caution)) + "</b></div></div>" +
+    (g > 2000000 ? "<p class='aide'>Cagnotte au-delà de 2 000 000 F : chaque membre devra avoir <b>un compte bancaire vérifié à son nom</b>.</p>" : "") +
+    "<button class='pilule blanche' data-aller='chiffres'>Voir les chiffres</button>";
+}
+function fluxHTML() {
+  if (!E.flux.length) return "<p class='aide'>Rien pour l'instant.</p>";
+  return "<div class='flux'>" + E.flux.slice().reverse().slice(0, 12).map((f) => "<div class='" + f.genre + "'><i></i><span>" + f.texte + "</span><small>" + f.compte + "</small></div>").join("") + "</div>";
+}
+
+/* ======================= le recrutement, simule ======================= */
+function ajouterFlux(texte, genre) { E.flux.push({ texte, genre: genre || "", compte: E.groupe.length + " / " + N(E.cfg) }); }
+function candidats() { const pris = new Set(E.groupe.concat(E.partis || [])); return NOMS.map((_, i) => i).filter((i) => i > 0 && !pris.has(i)); }
+function boucleRecrutement() {
+  const n = N(E.cfg);
+  if (!["recherche", "salle"].includes(E.ecran)) return;
+  if (E.groupe.length >= n) {
+    if (E.role === "membre") {
+      ajouterFlux("<b>" + nomId(E.orga) + "</b> a lancé la tontine", "sys"); rendre();
+      minuter(() => lancerContrat(), 1200);
+    }
+    return;
+  }
+  const libres = candidats();
+  if (!E.parti && E.groupe.length >= 3 && Math.random() < .25) {
+    const partants = E.groupe.filter((id) => id !== 0 && id !== E.orga);
+    const id = partants[Math.floor(Math.random() * partants.length)];
+    E.groupe = E.groupe.filter((x) => x !== id); E.parti = true; E.partis = (E.partis || []).concat(id);
+    ajouterFlux("<b>" + nomId(id) + "</b> s'est retiré avant le début : rien ne lui a été pris", "part");
+  } else if (libres.length) {
+    const id = libres[Math.floor(Math.random() * libres.length)];
+    E.groupe.push(id); ajouterFlux("<b>" + nomId(id) + "</b> a rejoint", "");
+  }
+  rendre();
+  minuter(boucleRecrutement, 650 + Math.random() * 500);
+}
+function lancerContrat() {
+  E.acceptes = []; E.jaiAccepte = false; aller("contrat", { remplacer: true });
+  const autres = E.groupe.filter((id) => id !== 0);
+  const pas = () => {
+    if (E.ecran !== "contrat") return;
+    const reste = autres.filter((id) => !E.acceptes.includes(id));
+    if (reste.length) { E.acceptes.push(reste[Math.floor(Math.random() * reste.length)]); rendre(); }
+    if (E.acceptes.length >= N(E.cfg)) { rendre(); minuter(lancerTirage, 1400); return; }
+    minuter(pas, reste.length ? 420 + Math.random() * 380 : 600);
+  };
+  minuter(pas, 700);
+}
+
+/* ======================= le tirage en direct ======================= */
+function lancerTirage() {
+  const alea = () => Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, "0");
+  const secret = alea() + alea() + alea() + alea();
+  E.tirage = { secret, empreinte: sha256(secret), gestes: [] }; E.gestes = 0; E.monGeste = null; E.ordre = null; E.revelees = 0; E.M = null;
+  aller("tirage", { remplacer: true });
+  const n = N(E.cfg);
+  const pas = () => {
+    if (E.ecran !== "tirage") return;
+    const attendus = n - (E.monGeste ? 0 : 1);
+    if (E.tirage.gestes.length < attendus) { E.tirage.gestes.push((Math.floor(Math.random() * 9000) + 1000).toString()); E.gestes = E.tirage.gestes.length; rendre(); minuter(pas, 180 + Math.random() * 260); return; }
+    if (!E.monGeste) { minuter(pas, 300); return; }
+    reveler();
+  };
+  minuter(pas, 600);
+}
+function reveler() {
+  const graine = sha256(E.tirage.secret + "|" + E.tirage.gestes.join("|"));
+  let s = parseInt(graine.slice(0, 8), 16) >>> 0;
+  const rnd = () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const ordre = E.groupe.slice().sort((a, b) => a - b);
+  for (let i = ordre.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ordre[i], ordre[j]] = [ordre[j], ordre[i]]; }
+  E.ordre = ordre; E.revelees = 0; relancerMoteur(); E.tourVu = 0; E.retire = false;
+  const pas = () => { if (E.ecran !== "tirage") { E.revelees = ordre.length; return; } E.revelees++; rendre(); if (E.revelees < ordre.length) minuter(pas, 260); };
+  minuter(pas, 400);
+}
+function raccourci() {
+  arreter();
+  if (valide(E.cfg).length) { const n0 = neuf(); E.cfg = n0.cfg; E.saisie = n0.saisie; }
+  if (!E.role) { E.role = "organisateur"; E.orga = 0; }
+  const n = N(E.cfg);
+  if (E.groupe.length !== n) { E.groupe = [0]; if (E.role === "membre") E.groupe.push(E.orga); const l = candidats(); while (E.groupe.length < n) E.groupe.push(l.shift()); }
+  E.acceptes = E.groupe.slice(); E.jaiAccepte = true;
+  const alea = () => Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, "0");
+  const secret = alea() + alea() + alea() + alea();
+  E.tirage = { secret, empreinte: sha256(secret), gestes: Array.from({ length: n }, () => (Math.floor(Math.random() * 9000) + 1000).toString()) };
+  E.monGeste = E.tirage.gestes[0]; E.gestes = n; E.M = null;
+  const graine = sha256(E.tirage.secret + "|" + E.tirage.gestes.join("|"));
+  let s = parseInt(graine.slice(0, 8), 16) >>> 0;
+  const rnd = () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const ordre = E.groupe.slice().sort((a, b) => a - b);
+  for (let i = ordre.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ordre[i], ordre[j]] = [ordre[j], ordre[i]]; }
+  E.ordre = ordre; E.revelees = n; relancerMoteur(); E.tourVu = 0; E.retire = false;
+  E.solde = 148350 - pct(cagnotteDe(E.cfg), REGLES.caution) - E.cfg.c; E.soldeTontine = E.cfg.c; E.dernierPrelev = null; E.credite = false;
+  E.pile = ["tontines"]; E.ecran = "tontine"; E.sens = "avant"; fermerFeuille(true); rendre();
+}
+function infoPrelevement(M, q) {
+  const d = E.dernierPrelev;
+  let h = "";
+  if (d && !M.clos) {
+    const parts = [];
+    if (d.tontine) parts.push(F(d.tontine) + " depuis ton solde tontine");
+    if (d.compte) parts.push(F(d.compte) + " depuis ton compte SwimPay" + (d.tontine || d.cagnotte ? "" : ", ton solde tontine était vide"));
+    if (parts.length) h += "<div class='bloc ok'><h3>Échéance du tour " + d.t + " payée</h3>" + parts.join(", ") + "." + (d.rendu ? "<div>Tu dois moins : <b>" + F(d.rendu) + "</b> t'ont été rendus sur ton compte SwimPay.</div>" : "") + "</div>";
+  }
+  if (!M.clos && M.tour < M.T && E.soldeTontine < M.c)
+    h += "<p class='aide'>Ajoute du crédit avant l'échéance. Sinon, ton compte SwimPay est prélevé ; s'il est vide, <b>ta caution paie, avec 5 % de pénalité</b>.</p>";
+  return h;
+}
+function cloturer() {
+  if (!E.M.clos) cloture(E.M);
+  if (!E.credite) { const q = E.M.p[maPlace()]; E.creditRendu = E.soldeTontine; E.solde += q.rendu + q.partReserve + q.bonusRecu + q.differe + E.soldeTontine; E.soldeTontine = 0; E.credite = true; }
+}
+function avancer() {
+  if (!E.M) { raccourci(); return; }
+  if (E.M.clos) return;
+  if (E.M.tour >= E.M.T) { cloturer(); E.pile = ["tontines", "tontine"]; E.ecran = "cloture"; E.sens = "avant"; rendre(); return; }
+  const p = maPlace(), avant = E.M.p[p].sortie;
+  tourSuivant(E.M);
+  const paye = E.M.p[p].sortie - avant, rendu = E.M.p[p].liberesTour;
+  const deT = Math.min(E.soldeTontine, paye); E.soldeTontine -= deT; E.solde -= paye - deT; E.solde += rendu;
+  E.dernierPrelev = { t: E.M.tour, tontine: deT, compte: paye - deT, rendu };
+  const monTour = tourDe(E.M, maPlace());
+  if (E.M.tour === monTour && E.tourVu < monTour) { E.tourVu = monTour; E.pile = ["tontines", "tontine"]; E.ecran = "gain"; E.sens = "avant"; }
+  rendre();
+}
+
+/* ======================= notifications ======================= */
+function notifier(type) {
+  E.notif = type; E.notifVue = false;
+  const o = OFFRES[type], el = document.getElementById("notif");
+  el.innerHTML = "<span class='ico'>T</span><span class='txt'><b>" + (type === "invitation" ? nomId(o.orga) + " t'invite à une tontine" : "Nouvel événement ouvert") + "</b>" +
+    echappe(o.nom) + " · " + F(o.cfg.c) + " " + RYTHMES[o.cfg.rythme].lib.toLowerCase() + "<br><small>" + resumeFormat(o.cfg) + "</small></span><button class='voir' data-offre='" + type + "'>Voir</button>";
+  el.classList.add("visible");
+  clearTimeout(notifier.t); notifier.t = setTimeout(() => el.classList.remove("visible"), 7000);
+  rendre();
+}
+function ouvrirOffre(type) {
+  arreter();
+  const o = OFFRES[type];
+  document.getElementById("notif").classList.remove("visible");
+  E.notifVue = true; E.role = "membre"; E.offre = type; E.nom = o.nom; E.orga = o.orga;
+  E.cfg = Object.assign({}, o.cfg); E.groupe = o.deja.slice(); E.partis = []; E.flux = []; E.parti = false;
+  E.M = null; E.ordre = null; E.tirage = null;
+  E.pile = ["tontines"]; E.ecran = "chiffres"; E.sens = "avant"; fermerFeuille(true); rendre();
+}
+
+/* ======================= feuilles ======================= */
+function ouvrirFeuille(type) { E.feuille = type; E.pin = []; rendreFeuille(); }
+function fermerFeuille(silencieux) {
+  E.feuille = null;
+  const f = document.getElementById("feuille"), v = document.getElementById("voile");
+  f.classList.remove("ouverte"); v.classList.remove("ouvert");
+  setTimeout(() => { if (!E.feuille) v.hidden = true; }, silencieux ? 0 : 260);
+}
+function clavierHTML() {
+  return "<div class='cases'>" + [0, 1, 2, 3].map((i) => "<span class='" + (E.pin[i] === undefined ? "vide" : "") + "'>" + (E.pin[i] === undefined ? "•" : "●") + "</span>").join("") + "</div>" +
+    "<div class='clavier'>" + ["1","2","3","4","5","6","7","8","9","","0","⌫"].map((t) => t === "" ? "<span></span>" : "<button class='" + (t === "⌫" ? "muet" : "") + "' data-pin='" + t + "'>" + t + "</button>").join("") + "</div>";
+}
+function rendreFeuille() {
+  const f = document.getElementById("feuille"), v = document.getElementById("voile");
+  if (!E.feuille) return;
+  let h = "<span class='poignee'></span>";
+  if (E.feuille === "accepter") {
+    const g = cagnotteDe(E.cfg);
+    h += "<h3 id='feuille-titre'>Accepter le contrat</h3><p class='aide'>Ton code secret signe le contrat. <b>" + F(pct(g, REGLES.caution) + E.cfg.c) + "</b> sont prélevés sur ton compte SwimPay : ta caution (" + F(pct(g, REGLES.caution)) + "), rendue à la fin, et ta première cotisation, qui va sur ton solde tontine.</p>" + clavierHTML();
+  }
+  if (E.feuille === "credit") {
+    const M = E.M, restant = (M.T - M.tour) * M.c, cr = E.credit;
+    const montant = cr.n === "tout" ? Math.max(M.c, restant - E.soldeTontine) : cr.n * M.c;
+    h += "<h3 id='feuille-titre'>Ajouter du crédit</h3><p class='aide'>Ton solde tontine paie tes échéances, automatiquement, le jour venu.</p>" +
+      "<div class='puces'>" + [[1, "1 échéance"], [2, "2 échéances"], ["tout", "Tout le reste"]].map(([k, l]) => "<button class='puce' data-credit-n='" + k + "' aria-pressed='" + (cr.n === k) + "'>" + l + "</button>").join("") + "</div>" +
+      "<div class='recap'><div class='total'><span>Montant</span><b>" + F(montant) + "</b></div></div>" +
+      "<p class='groupe-titre'>Depuis</p><div class='puces'>" +
+        [["compte", "Mon solde SwimPay · " + F(E.solde)], ["om", "Orange Money · 07 ·· 96"], ["wave", "Wave"]].map(([k, l]) => "<button class='puce' data-credit-source='" + k + "' aria-pressed='" + (cr.source === k) + "'>" + l + "</button>").join("") + "</div>" +
+      "<p class='aide'>Recharger est gratuit. Ton code confirme l'ajout.</p>" + clavierHTML();
+    E.credit.montant = montant;
+  }
+  if (E.feuille === "retirer") {
+    const q = E.M.p[maPlace()];
+    h += "<h3 id='feuille-titre'>Récupérer " + F(q.libre) + "</h3>" +
+      "<div class='recap'><div><span>Vers</span><b>Ton compte SwimPay</b></div><div><span>Solde actuel</span><b>" + F(E.solde) + "</b></div></div>" +
+      "<p class='aide'>L'argent de ta cagnotte arrive d'abord sur <b>ton compte SwimPay</b>. Tu l'envoies ensuite où tu veux. Nouveau téléphone : <b>72 heures d'attente</b>.</p>" + clavierHTML();
+  }
+  if (E.feuille === "confirmer") h += "<h3 id='feuille-titre'>Confirme sur ton appareil habituel</h3><p class='aide'>Deuxième niveau de sécurité : une confirmation arrive par un canal extérieur. SwimPay ne t'appelle jamais pour demander un code.</p><div class='bloc ok' style='text-align:center'>Confirmation reçue ✓</div><button class='pilule acide' data-confirme>Valider</button>";
+  if (E.feuille === "verifier") {
+    const t = E.tirage, recalc = sha256(t.secret), graine = sha256(t.secret + "|" + t.gestes.join("|"));
+    h += "<h3 id='feuille-titre'>Vérifier le tirage</h3>" +
+      "<div class='etape fait'><span class='n'>1</span><div class='t'>Le nombre secret de SwimPay, révélé<span class='empreinte'>" + t.secret + "</span></div></div>" +
+      "<div class='etape fait'><span class='n'>2</span><div class='t'>Son empreinte, recalculée ici<span class='empreinte'>" + recalc + "</span><small>" + (recalc === t.empreinte ? "Identique à l'empreinte publiée avant le tirage ✓" : "Différente : le tirage serait rejeté") + "</small></div></div>" +
+      "<div class='etape fait'><span class='n'>3</span><div class='t'>Le secret et les " + t.gestes.length + " gestes, combinés<span class='empreinte'>" + graine + "</span><small>Cette graine donne l'ordre, toujours le même : chacun peut refaire le calcul.</small></div></div>" +
+      "<button class='pilule contour' data-fermer>Fermer</button>";
+  }
+  f.innerHTML = h; v.hidden = false;
+  requestAnimationFrame(() => { f.classList.add("ouverte"); v.classList.add("ouvert"); });
+}
+
+/* ======================= le cote : le moteur ======================= */
+function rendreCote() {
+  document.getElementById("scenarios").innerHTML = SCENARIOS.map((s) =>
+    "<button class='scenario' data-scenario='" + s.id + "' aria-pressed='" + (E.scenario === s.id) + "'><b>" + s.lib + "</b><small>" + s.det + "</small></button>").join("");
+  const M = E.M, table = document.getElementById("table"), tot = document.getElementById("totaux"), etat = document.getElementById("etat-moteur");
+  document.getElementById("cmd-tour").disabled = !!(M && M.clos);
+  document.getElementById("cmd-fin").disabled = !!(M && M.clos);
+  document.getElementById("cmd-tour").textContent = !M ? "Commencer" : M.tour >= M.T ? "Clôturer" : "Tour suivant";
+  if (!M) {
+    etat.textContent = E.ordre ? "" : "Le tirage n'a pas encore eu lieu. Suis le parcours dans le téléphone, ou saute au tirage fait.";
+    table.innerHTML = "<tr><td style='text-align:left;color:var(--sourd);padding:18px'>Le tableau du groupe apparaît après le tirage.</td></tr>";
+    tot.innerHTML = ""; return;
+  }
+  etat.innerHTML = (M.clos ? "Tontine clôturée." : M.tour === 0 ? "Tirage fait, la tontine est prête." : "Fin du tour " + M.tour + " sur " + M.T + ".") +
+    " " + M.N + " membres, " + M.T + " tours, " + M.B + " gagnant" + (M.B > 1 ? "s" : "") + " par tour, cagnotte de " + F(M.cagnotte) + ".";
+  let lignes = "<tr><th>Tour</th><th>Membre</th><th>État</th><th>A versé</th><th>A reçu</th><th>Caution</th><th>Bloqué</th><th>Doit</th><th>" + (M.clos ? "Résultat" : "Solde") + "</th></tr>";
+  const cur = M.clos ? M.T : M.tour;
+  for (let i = 0; i < M.N; i++) {
+    const q = M.p[i], t = tourDe(M, i), a = M.absences[i];
+    let pill = t <= cur ? "<span class='pill v'>a gagné</span>" : "<span class='pill'>à l'heure</span>";
+    if (a && a[0] <= cur) {
+      if (a[1] != null && a[1] <= cur) pill = "<span class='pill a'>a rattrapé</span>";
+      else if (a[1] != null) pill = "<span class='pill a'>en retard</span>";
+      else pill = "<span class='pill r'>ne paie plus</span>";
+    }
+    const dette = q.detteRes + q.detteSw, res = q.entree - q.sortie;
+    lignes += "<tr class='" + (E.ordre[i] === 0 ? "vous" : "") + "'><td>" + t + "</td><td>" + echappe(nomPlace(i)) + "</td><td>" + pill + "</td><td>" + F(q.sortie) + "</td><td>" + F(q.entree) + "</td><td>" + F(q.caution) + "</td><td>" + F(q.bloque) + "</td><td>" + (dette ? F(dette) : "—") + "</td><td class='" + (res > 0 ? "pos" : "neg") + "'>" + Fs(res) + "</td></tr>";
+  }
+  table.innerHTML = lignes;
+  tot.innerHTML =
+    "<div><span>Réserve de secours</span><b>" + F(M.reserve) + "</b></div>" +
+    "<div><span>Frais du système (SwimPay)</span><b>" + F(M.revenu) + "</b></div>" +
+    "<div><span>Avance de SwimPay en cours</span><b>" + F(M.avanceEnCours) + "</b></div>" +
+    "<div class='" + (M.clos && M.perteSw === 0 ? "ok" : "") + "'><span>Perte de SwimPay</span><b>" + (M.clos ? F(M.perteSw) : "à la clôture") + "</b></div>" +
+    "<div class='" + (M.clos && conserve(M) ? "ok" : "") + "'><span>Argent conservé au franc près</span><b>" + (M.clos ? (conserve(M) ? "Oui ✓" : "Non") : "à la clôture") + "</b></div>";
+}
+
+/* ======================= rendu ======================= */
+let dernierEcran = null;
+function rendre() {
+  const hote = document.getElementById("vue-hote");
+  const html = (ECRANS[E.ecran] || ECRANS.accueil)();
+  const meme = dernierEcran === E.ecran;
+  const zone = hote.querySelector(".bas"), haut = meme && zone ? zone.scrollTop : 0;
+  const actif = document.activeElement && document.activeElement.id;
+  hote.innerHTML = "<div class='vue " + (meme ? "sans-anim " : E.sens === "retour" ? "retour " : "") + (RACINES.includes(E.ecran) ? "avec-nav" : "") + "'>" + html + "</div>";
+  if (meme && hote.querySelector(".bas")) hote.querySelector(".bas").scrollTop = haut;
+  if (meme && actif && document.getElementById(actif)) document.getElementById(actif).focus();
+  dernierEcran = E.ecran;
+  rendreCote();
+}
+
+/* la saisie libre : on met a jour l'etat et le recapitulatif, sans redessiner les champs */
+document.addEventListener("input", (ev) => {
+  const el = ev.target;
+  if (el.id === "f-nom") { E.nom = el.value.trim() || "Ma tontine"; return; }
+  if (el.id === "f-c") { const v = chiffres(el.value).slice(0, 7); E.saisie.c = v; E.cfg.c = +v || 0; el.value = groupe3(v); }
+  if (el.id === "f-t") { const v = chiffres(el.value).slice(0, 2); E.saisie.T = v; E.cfg.T = +v || 0; el.value = v; const u = document.getElementById("u-t"); if (u) u.textContent = E.cfg.T > 1 ? RYTHMES[E.cfg.rythme].plur : RYTHMES[E.cfg.rythme].un; }
+  if (el.id === "f-c" || el.id === "f-t") {
+    const err = valide(E.cfg);
+    document.getElementById("l-c").classList.toggle("erreur", err.some((e) => e.includes("cotisation")));
+    document.getElementById("l-t").classList.toggle("erreur", err.some((e) => e.includes("tours")));
+    document.getElementById("recap-creer").innerHTML = recapCreer();
+  }
+});
+
+document.addEventListener("click", (ev) => {
+  const b = ev.target.closest("button"); if (!b) return;
+  const d = b.dataset;
+  if ("retour" in d) return retour();
+  if (d.onglet) return aller(d.onglet);
+  if (d.aller === "creer") { E.role = null; E.offre = null; E.M = null; E.ordre = null; E.groupe = []; E.flux = []; const n0 = neuf(); E.cfg = n0.cfg; E.saisie = n0.saisie; E.nom = n0.nom; }
+  if (d.aller) return aller(d.aller);
+  if (d.allerRacine) { arreter(); E.pile = ["tontines"]; E.ecran = d.allerRacine; E.sens = "avant"; fermerFeuille(true); return rendre(); }
+  if (d.offre) return ouvrirOffre(d.offre);
+  if (d.rythme) { E.cfg.rythme = d.rythme; return rendre(); }
+  if (d.b) { E.cfg.B = +d.b; return rendre(); }
+  if (d.mode) { E.cfg.mode = d.mode; return rendre(); }
+  if ("publier" in d) {
+    E.role = "organisateur"; E.orga = 0; E.offre = null; E.groupe = [0]; E.partis = []; E.flux = []; E.parti = false; E.M = null; E.ordre = null;
+    ajouterFlux("Tu as " + (E.cfg.mode === "ouverte" ? "publié l'événement" : "envoyé les invitations"), "sys");
+    aller("recherche"); return minuter(boucleRecrutement, 900);
+  }
+  if ("rejoindre" in d) {
+    E.groupe.push(0); E.flux = []; ajouterFlux("<b>Tu</b> as rejoint", "");
+    aller("salle"); return minuter(boucleRecrutement, 900);
+  }
+  if ("seretirer" in d) { arreter(); E.groupe = E.groupe.filter((id) => id !== 0); E.role = null; E.nom = "Ma tontine"; return aller("tontines"); }
+  if ("commencerOrga" in d) { ajouterFlux("Tu as lancé la tontine", "sys"); return lancerContrat(); }
+  if ("accepter" in d) return ouvrirFeuille("accepter");
+  if (d.pin !== undefined) {
+    if (d.pin === "⌫") E.pin.pop(); else if (E.pin.length < 4) E.pin.push(d.pin);
+    if (E.pin.length === 4) {
+      const type = E.feuille;
+      setTimeout(() => {
+        if (type === "accepter") {
+          E.jaiAccepte = true; if (!E.acceptes.includes(0)) E.acceptes.push(0); E.solde -= pct(cagnotteDe(E.cfg), REGLES.caution) + E.cfg.c; E.soldeTontine = E.cfg.c;
+          fermerFeuille(); rendre();
+          if (E.acceptes.length >= N(E.cfg)) minuter(lancerTirage, 1400);
+          else { const suite = () => { if (E.ecran !== "contrat") return; const reste = E.groupe.filter((id) => !E.acceptes.includes(id)); if (reste.length) { E.acceptes.push(reste[0]); rendre(); } if (E.acceptes.length >= N(E.cfg)) { minuter(lancerTirage, 1400); return; } minuter(suite, 450); }; minuter(suite, 450); }
+        }
+        if (type === "retirer") ouvrirFeuille("confirmer");
+        if (type === "credit") { E.soldeTontine += E.credit.montant; if (E.credit.source === "compte") E.solde -= E.credit.montant; fermerFeuille(); rendre(); }
+      }, 180);
+    }
+    return rendreFeuille();
+  }
+  if ("geste" in d) { E.monGeste = (Math.floor(Math.random() * 9000) + 1000).toString(); E.tirage.gestes.push(E.monGeste); E.gestes = E.tirage.gestes.length; return rendre(); }
+  if ("verifier" in d) return ouvrirFeuille("verifier");
+  if ("fermer" in d) return fermerFeuille();
+  if ("tour" in d) return avancer();
+  if ("cloturer" in d) { cloturer(); E.pile = ["tontines", "tontine"]; E.ecran = "cloture"; E.sens = "avant"; return rendre(); }
+  if ("retirer" in d) return ouvrirFeuille("retirer");
+  if ("credit" in d) { E.credit = { n: 1, source: "compte" }; return ouvrirFeuille("credit"); }
+  if (d.creditN) { E.credit.n = d.creditN === "tout" ? "tout" : +d.creditN; E.pin = []; return rendreFeuille(); }
+  if (d.creditSource) { E.credit.source = d.creditSource; E.pin = []; return rendreFeuille(); }
+  if ("confirme" in d) { E.retire = true; E.solde += E.M.p[maPlace()].libre; fermerFeuille(); return rendre(); }
+  if (d.scenario) { E.scenario = d.scenario; relancerMoteur(); return rendre(); }
+});
+document.getElementById("voile").addEventListener("click", () => fermerFeuille());
+document.getElementById("cmd-invit").addEventListener("click", () => { if (!RACINES.includes(E.ecran)) aller("accueil"); notifier("invitation"); });
+document.getElementById("cmd-global").addEventListener("click", () => { if (!RACINES.includes(E.ecran)) aller("accueil"); notifier("global"); });
+document.getElementById("cmd-raccourci").addEventListener("click", raccourci);
+document.getElementById("cmd-tour").addEventListener("click", avancer);
+document.getElementById("cmd-fin").addEventListener("click", () => { if (!E.M) raccourci(); cloturer(); E.pile = ["tontines", "tontine"]; E.ecran = "cloture"; E.sens = "avant"; rendre(); });
+document.getElementById("cmd-reset").addEventListener("click", () => { arreter(); E = neuf(); dernierEcran = null; fermerFeuille(true); document.getElementById("notif").classList.remove("visible"); rendre(); setTimeout(() => { if (E.ecran === "accueil" && !E.notif) notifier("invitation"); }, 1600); });
+
+rendre();
+setTimeout(() => { if (E.ecran === "accueil" && !E.notif) notifier("invitation"); }, 1600);
+</script>

@@ -1,0 +1,259 @@
+/* Fabriquer un vrai .docx sans aucune dependance.
+ *
+ * Un .docx est un ZIP d'XML. Node fournit zlib (deflateRawSync) mais pas
+ * d'ecrivain ZIP : on ecrit donc le conteneur nous-memes (en-tetes locaux,
+ * annuaire central, fin d'annuaire) et on calcule le CRC32 a la main.
+ *
+ * Le document produit est EDITABLE dans Word : styles reels (titres, tableaux),
+ * texte modifiable, schemas inseres en images.
+ *
+ *   node build-docx.mjs <dossier-export> <sortie.docx>
+ */
+import { readFileSync, writeFileSync } from "node:fs";
+import { deflateRawSync } from "node:zlib";
+import { join } from "node:path";
+
+const [, , DIR, OUT] = process.argv;
+
+// ── CRC32, table calculee une fois ─────────────────────────────────────────
+const TABLE = (() => {
+  const t = new Int32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c;
+  }
+  return t;
+})();
+function crc32(buf) {
+  let c = -1;
+  for (let i = 0; i < buf.length; i++) c = TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ -1) >>> 0;
+}
+
+// ── Ecrivain ZIP minimal ───────────────────────────────────────────────────
+function zip(entries) {
+  const locaux = [], centraux = [];
+  let offset = 0;
+  for (const { name, data } of entries) {
+    const nom = Buffer.from(name, "utf8");
+    const brut = Buffer.isBuffer(data) ? data : Buffer.from(data, "utf8");
+    const comprime = deflateRawSync(brut, { level: 9 });
+    const crc = crc32(brut);
+
+    const lh = Buffer.alloc(30);
+    lh.writeUInt32LE(0x04034b50, 0);
+    lh.writeUInt16LE(20, 4);          // version necessaire
+    lh.writeUInt16LE(0, 6);           // drapeaux
+    lh.writeUInt16LE(8, 8);           // methode : deflate
+    lh.writeUInt16LE(0, 10);          // heure
+    lh.writeUInt16LE(0x21, 12);       // date (1980-01-01, deterministe)
+    lh.writeUInt32LE(crc, 14);
+    lh.writeUInt32LE(comprime.length, 18);
+    lh.writeUInt32LE(brut.length, 22);
+    lh.writeUInt16LE(nom.length, 26);
+    lh.writeUInt16LE(0, 28);
+    locaux.push(lh, nom, comprime);
+
+    const ch = Buffer.alloc(46);
+    ch.writeUInt32LE(0x02014b50, 0);
+    ch.writeUInt16LE(20, 4); ch.writeUInt16LE(20, 6);
+    ch.writeUInt16LE(0, 8); ch.writeUInt16LE(8, 10);
+    ch.writeUInt16LE(0, 12); ch.writeUInt16LE(0x21, 14);
+    ch.writeUInt32LE(crc, 16);
+    ch.writeUInt32LE(comprime.length, 20);
+    ch.writeUInt32LE(brut.length, 24);
+    ch.writeUInt16LE(nom.length, 28);
+    ch.writeUInt32LE(0, 42);          // decalage de l'en-tete local
+    ch.writeUInt32LE(offset, 42);
+    centraux.push(ch, nom);
+
+    offset += 30 + nom.length + comprime.length;
+  }
+  const corps = Buffer.concat(locaux);
+  const annuaire = Buffer.concat(centraux);
+  const fin = Buffer.alloc(22);
+  fin.writeUInt32LE(0x06054b50, 0);
+  fin.writeUInt16LE(entries.length, 8);
+  fin.writeUInt16LE(entries.length, 10);
+  fin.writeUInt32LE(annuaire.length, 12);
+  fin.writeUInt32LE(corps.length, 16);
+  return Buffer.concat([corps, annuaire, fin]);
+}
+
+// ── Echappement XML ────────────────────────────────────────────────────────
+const esc = (s) =>
+  String(s ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    // Word refuse les caracteres de controle : on les retire plutot que de
+    // produire un fichier que Word declare corrompu.
+    // eslint-disable-next-line no-control-regex -- ces caracteres sont justement ceux a retirer
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");
+
+// ── Blocs WordprocessingML ─────────────────────────────────────────────────
+const para = (texte, style, opts = {}) => {
+  const rpr = opts.gras ? "<w:rPr><w:b/></w:rPr>" : "";
+  return (
+    `<w:p><w:pPr>${style ? `<w:pStyle w:val="${style}"/>` : ""}` +
+    `${opts.espaceAvant ? `<w:spacing w:before="${opts.espaceAvant}"/>` : ""}</w:pPr>` +
+    `<w:r>${rpr}<w:t xml:space="preserve">${esc(texte)}</w:t></w:r></w:p>`
+  );
+};
+
+const tableau = (rows) => {
+  const largeur = 9350;
+  const cols = Math.max(...rows.map((r) => r.length));
+  const w = Math.floor(largeur / cols);
+  const grid = `<w:tblGrid>${Array(cols).fill(`<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>`;
+  const bord = (c) => `<w:${c} w:val="single" w:sz="4" w:space="0" w:color="DDDED6"/>`;
+  const props =
+    `<w:tblPr><w:tblStyle w:val="Grille"/><w:tblW w:w="${largeur}" w:type="dxa"/>` +
+    `<w:tblBorders>${bord("top")}${bord("left")}${bord("bottom")}${bord("right")}${bord("insideH")}${bord("insideV")}</w:tblBorders></w:tblPr>`;
+  const corps = rows
+    .map((r, i) => {
+      const cells = Array.from({ length: cols }, (_, j) => {
+        const t = r[j] ?? "";
+        const gras = i === 0;
+        return (
+          `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>` +
+          (gras ? `<w:shd w:val="clear" w:fill="F2F4EC"/>` : "") +
+          `</w:tcPr><w:p><w:pPr><w:spacing w:before="40" w:after="40"/></w:pPr>` +
+          `<w:r>${gras ? "<w:rPr><w:b/></w:rPr>" : ""}<w:t xml:space="preserve">${esc(t)}</w:t></w:r></w:p></w:tc>`
+        );
+      }).join("");
+      return `<w:tr>${cells}</w:tr>`;
+    })
+    .join("");
+  return `<w:tbl>${props}${grid}${corps}</w:tbl>` + para("");
+};
+
+const image = (rid, cx, cy, nom) =>
+  `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="160" w:after="160"/></w:pPr><w:r><w:drawing>` +
+  `<wp:inline distT="0" distB="0" distL="0" distR="0">` +
+  `<wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>` +
+  `<wp:docPr id="${rid}" name="${esc(nom)}" descr="${esc(nom)}"/>` +
+  `<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>` +
+  `<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">` +
+  `<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">` +
+  `<pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">` +
+  `<pic:nvPicPr><pic:cNvPr id="${rid}" name="${esc(nom)}"/><pic:cNvPicPr/></pic:nvPicPr>` +
+  `<pic:blipFill><a:blip r:embed="rId${rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
+  `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>` +
+  `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>` +
+  `</a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
+
+// ── Construction ───────────────────────────────────────────────────────────
+const blocs = JSON.parse(readFileSync(join(DIR, "structure.json"), "utf8"));
+const medias = [];
+const corps = [];
+let ridImage = 100;
+
+for (const b of blocs) {
+  switch (b.type) {
+    case "h1": corps.push(para(b.text, "Titre1")); break;
+    case "h2": corps.push(para(b.text, "Titre2")); break;
+    case "h3": corps.push(para(b.text, "Titre3")); break;
+    case "eyebrow": corps.push(para(b.text, "Surtitre")); break;
+    case "legende": corps.push(para(b.text, "Legende")); break;
+    case "p": corps.push(para(b.text)); break;
+    case "note": corps.push(para(b.title || "", null, { gras: true, espaceAvant: 160 }), para(b.text)); break;
+    case "def": corps.push(para(b.term, null, { gras: true, espaceAvant: 120 }), para(b.text)); break;
+    case "chiffre": corps.push(para(`${b.qui} : ${b.num}`, null, { gras: true }), para(b.txt)); break;
+    case "list": for (const it of b.items) corps.push(para("• " + it)); break;
+    case "table": corps.push(tableau(b.rows)); break;
+    case "image": {
+      const nom = `schema-${b.index}.png`;
+      let data;
+      try { data = readFileSync(join(DIR, nom)); } catch { break; }
+      const rid = ++ridImage;
+      medias.push({ rid, nom, data });
+      /* Largeur utile d'une page A4 avec nos marges : ~16,5 cm. En EMU
+         (914400 par pouce), soit 5 940 000. On garde le rapport de la capture. */
+      const cx = 5_940_000;
+      const dims = tailleP2(data);
+      const cy = Math.round(cx * (dims.h / dims.w));
+      corps.push(image(rid, cx, cy, nom));
+      break;
+    }
+  }
+}
+
+/** Lit largeur et hauteur dans l'en-tete IHDR d'un PNG. */
+function tailleP2(buf) {
+  return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+}
+
+const NS =
+  'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" ' +
+  'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ' +
+  'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"';
+
+const document_xml =
+  `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
+  `<w:document ${NS}><w:body>${corps.join("")}` +
+  `<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>` +
+  `<w:pgMar w:top="1134" w:right="1021" w:bottom="1134" w:left="1021" w:header="708" w:footer="708" w:gutter="0"/>` +
+  `</w:sectPr></w:body></w:document>`;
+
+const style = (id, nom, taille, gras, couleur, avant, apres, majus) =>
+  `<w:style w:type="paragraph" w:styleId="${id}"><w:name w:val="${nom}"/>` +
+  `<w:basedOn w:val="Normal"/><w:qFormat/>` +
+  `<w:pPr><w:spacing w:before="${avant}" w:after="${apres}"/><w:keepNext/></w:pPr>` +
+  `<w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>${gras ? "<w:b/>" : ""}` +
+  `${majus ? "<w:caps/>" : ""}<w:color w:val="${couleur}"/><w:sz w:val="${taille}"/></w:rPr></w:style>`;
+
+const styles_xml =
+  `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
+  `<w:styles ${NS}>` +
+  `<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>` +
+  `<w:color w:val="1A1A1A"/><w:sz w:val="21"/></w:rPr></w:rPrDefault>` +
+  `<w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>` +
+  `<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>` +
+  style("Titre1", "heading 1", 56, true, "141414", 0, 200, false) +
+  style("Titre2", "heading 2", 34, true, "141414", 320, 140, false) +
+  style("Titre3", "heading 3", 24, true, "3E5F00", 240, 100, false) +
+  style("Surtitre", "Surtitre", 17, false, "6F7268", 0, 60, true) +
+  style("Legende", "Legende", 17, false, "6F7268", 40, 160, false) +
+  `<w:style w:type="table" w:styleId="Grille"><w:name w:val="Table Grid"/>` +
+  `<w:tblPr><w:tblCellMar><w:top w:w="72" w:type="dxa"/><w:left w:w="108" w:type="dxa"/>` +
+  `<w:bottom w:w="72" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style>` +
+  `</w:styles>`;
+
+const rels_doc =
+  `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
+  `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+  `<Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
+  medias.map((m) =>
+    `<Relationship Id="rId${m.rid}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${m.nom}"/>`
+  ).join("") +
+  `</Relationships>`;
+
+const content_types =
+  `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
+  `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
+  `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
+  `<Default Extension="xml" ContentType="application/xml"/>` +
+  `<Default Extension="png" ContentType="image/png"/>` +
+  `<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>` +
+  `<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>` +
+  `</Types>`;
+
+const rels_racine =
+  `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
+  `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+  `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>` +
+  `</Relationships>`;
+
+const entries = [
+  { name: "[Content_Types].xml", data: content_types },
+  { name: "_rels/.rels", data: rels_racine },
+  { name: "word/document.xml", data: document_xml },
+  { name: "word/styles.xml", data: styles_xml },
+  { name: "word/_rels/document.xml.rels", data: rels_doc },
+  ...medias.map((m) => ({ name: `word/media/${m.nom}`, data: m.data })),
+];
+
+writeFileSync(OUT, zip(entries));
+console.log("DOCX ->", OUT);
+console.log(`  ${blocs.length} blocs, ${medias.length} images, ${entries.length} parties`);

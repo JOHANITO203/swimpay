@@ -1,0 +1,950 @@
+<title>En-têtes & heros relevés</title>
+<style>
+  /* ------------------------------------------------------------------
+     DEUX JEUX DE JETONS, et c'est le point le plus important de la
+     feuille de style :
+
+     - le CHROME DE LA PLANCHE suit le theme du lecteur ;
+     - le SPECIMEN ne le suit JAMAIS. C'est un echantillon : il garde ses
+       vraies couleurs comme un nuancier de peinture sous n'importe quel
+       eclairage. Les couleurs du specimen se declarent dans le bloc
+       « JETONS DU SPECIMEN » et nulle part ailleurs.
+     ------------------------------------------------------------------ */
+  :root {
+    color-scheme: light dark;
+
+    --fond: #101216;
+    --carte: #191C22;
+    --carte-haut: #20242C;
+    --texte: #E8E6E1;
+    --sourd: #9B988F;
+    --trait: rgba(232, 230, 225, .13);
+    --trait-fort: rgba(232, 230, 225, .26);
+    --accent: #CEAA62;
+    --accent-sourd: rgba(206, 170, 98, .14);
+
+    /* ---- JETONS DU SPECIMEN — a remplacer par ceux du projet ------- */
+    --spec-fond: #14161B;
+    --spec-surface: #F6F5F1;
+    --spec-encre: #33373F;
+
+    --ec-1: 4px;  --ec-2: 8px;  --ec-3: 14px;
+    --ec-4: 22px; --ec-5: 34px; --ec-6: 52px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --fond: #EFECE5; --carte: #FBFAF7; --carte-haut: #FFFFFF;
+      --texte: #23262C; --sourd: #6C6960;
+      --trait: rgba(35, 38, 44, .13); --trait-fort: rgba(35, 38, 44, .24);
+      --accent: #7A5C22; --accent-sourd: rgba(122, 92, 34, .10);
+    }
+  }
+  :root[data-theme="light"] {
+    --fond: #EFECE5; --carte: #FBFAF7; --carte-haut: #FFFFFF;
+    --texte: #23262C; --sourd: #6C6960;
+    --trait: rgba(35, 38, 44, .13); --trait-fort: rgba(35, 38, 44, .24);
+    --accent: #7A5C22; --accent-sourd: rgba(122, 92, 34, .10);
+  }
+  :root[data-theme="dark"] {
+    --fond: #101216; --carte: #191C22; --carte-haut: #20242C;
+    --texte: #E8E6E1; --sourd: #9B988F;
+    --trait: rgba(232, 230, 225, .13); --trait-fort: rgba(232, 230, 225, .26);
+    --accent: #CEAA62; --accent-sourd: rgba(206, 170, 98, .14);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--fond);
+    color: var(--texte);
+    font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 1180px; margin: 0 auto;
+    padding: var(--ec-6) var(--ec-4);
+    display: flex; flex-direction: column; gap: var(--ec-5);
+  }
+
+  .chapeau { display: flex; flex-direction: column; gap: var(--ec-3); max-width: 62ch; }
+  h1 {
+    margin: 0; font-size: clamp(30px, 4.6vw, 44px); font-weight: 800;
+    letter-spacing: -.03em; line-height: 1.02; text-wrap: balance;
+  }
+  .chapeau p { margin: 0; color: var(--sourd); font-size: 16px; }
+  .chapeau strong, .chapeau b { color: var(--texte); font-weight: 650; }
+
+  .invariants {
+    display: flex; flex-wrap: wrap; gap: var(--ec-1) var(--ec-4);
+    padding: var(--ec-3) var(--ec-4); margin: 0;
+    border: 1px solid var(--trait); border-left: 2px solid var(--accent);
+    border-radius: 4px; background: var(--accent-sourd);
+  }
+  .invariants > div { display: flex; gap: var(--ec-2); align-items: baseline; }
+  .invariants dt {
+    margin: 0; font-size: 11px; text-transform: uppercase;
+    letter-spacing: .16em; font-weight: 700; color: var(--sourd);
+  }
+  .invariants dd {
+    margin: 0; font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 14px; font-variant-numeric: tabular-nums; font-weight: 600;
+  }
+
+  .atelier {
+    display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+    gap: var(--ec-5); align-items: start;
+  }
+  @media (max-width: 860px) { .atelier { grid-template-columns: minmax(0, 1fr); } }
+
+  .rail { display: flex; flex-direction: column; gap: var(--ec-4); }
+  .famille { display: flex; flex-direction: column; gap: var(--ec-1); }
+  .famille > h2 {
+    margin: 0 0 var(--ec-1); font-size: 11px; text-transform: uppercase;
+    letter-spacing: .16em; font-weight: 700; color: var(--sourd);
+  }
+  .choix {
+    appearance: none; -webkit-appearance: none;
+    display: flex; align-items: center; gap: var(--ec-3);
+    width: 100%; text-align: left; cursor: pointer;
+    padding: var(--ec-2) var(--ec-3);
+    border: 1px solid transparent; border-radius: 4px;
+    background: transparent; color: inherit; font: inherit;
+  }
+  .choix:hover { background: var(--carte); border-color: var(--trait); }
+  .choix:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .choix[aria-pressed="true"] { background: var(--carte-haut); border-color: var(--trait-fort); }
+  .choix .vignette { flex: 0 0 auto; display: block; }
+  .choix .nom { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .choix .nom b { font-weight: 620; font-size: 14.5px; letter-spacing: -.005em; }
+  .choix[aria-pressed="true"] .nom b { color: var(--accent); }
+  .choix .nom span { font-size: 12px; color: var(--sourd); line-height: 1.35; }
+
+  .colonne { display: flex; flex-direction: column; gap: var(--ec-4); min-width: 0; }
+  .carte { border: 1px solid var(--trait); border-radius: 6px; background: var(--carte); overflow: hidden; }
+  .carte > header {
+    display: flex; flex-wrap: wrap; gap: var(--ec-2) var(--ec-4);
+    align-items: baseline; justify-content: space-between;
+    padding: var(--ec-3) var(--ec-4); border-bottom: 1px solid var(--trait);
+  }
+  .carte > header h2 {
+    margin: 0; font-size: 11px; text-transform: uppercase;
+    letter-spacing: .16em; font-weight: 700; color: var(--sourd);
+  }
+  .carte > header .note { font-size: 12.5px; color: var(--sourd); }
+  .corps { padding: var(--ec-4); }
+
+  /* LE SPECIMEN VIT SUR SON PROPRE FOND, pas sur celui de la carte */
+  /* LE SPECIMEN NE S'ETIRE PAS. Sans plafond, un SVG en width:100 %
+     grossit avec la carte et l'echelle 1:1 annoncee devient fausse.
+     PLANCHE.largeurSpecimen fixe le plafond ; au-dela, la scene reste
+     centree sur son fond. */
+  .scene { background: var(--spec-fond); padding: 0; }
+  .scene > * {
+    display: block; width: 100%; height: auto; margin: 0 auto;
+    max-width: var(--largeur-specimen, 760px);
+  }
+
+  .loupe { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 230px); gap: var(--ec-4); }
+  .loupe.sans-vue { grid-template-columns: minmax(0, 1fr); max-width: 420px; }
+  @media (max-width: 620px) { .loupe { grid-template-columns: minmax(0, 1fr); } }
+  .loupe .vue > * { display: block; width: 100%; height: auto; }
+
+  .fiche { display: flex; flex-direction: column; gap: var(--ec-3); }
+  .fiche dl { margin: 0; display: flex; flex-direction: column; gap: var(--ec-2); }
+  .fiche .ligne {
+    display: flex; flex-direction: column; gap: 1px;
+    padding-bottom: var(--ec-2); border-bottom: 1px solid var(--trait);
+  }
+  .fiche dt {
+    margin: 0; font-size: 10.5px; text-transform: uppercase;
+    letter-spacing: .16em; font-weight: 700; color: var(--sourd);
+  }
+  .fiche dd { margin: 0; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+
+  .reglages { display: flex; flex-direction: column; gap: var(--ec-2); padding-top: var(--ec-2); }
+  .reglages label {
+    display: flex; flex-direction: column; gap: 2px;
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .16em;
+    font-weight: 700; color: var(--sourd);
+  }
+  .reglages .valeur {
+    font-family: ui-monospace, Consolas, monospace; font-size: 13.5px;
+    color: var(--texte); text-transform: none; letter-spacing: 0;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  /* LE PANNEAU DE TECHNIQUE. Une planche qui montre une forme sans son
+     code n'est utile qu'a moitie : on choisit, puis on redemande comment
+     faire. Le code suit le REGLAGE, donc ce qui est copie correspond a
+     ce qui est vu. */
+  .technique pre {
+    margin: 0; padding: var(--ec-4);
+    overflow-x: auto; max-height: 420px; overflow-y: auto;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 12.5px; line-height: 1.65; tab-size: 2;
+    color: var(--texte);
+  }
+  .technique pre code { white-space: pre; }
+  .choix-final { display: flex; flex-direction: column; gap: var(--ec-3); }
+  .choix-final label {
+    display: flex; flex-direction: column; gap: 5px;
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .16em;
+    font-weight: 700; color: var(--sourd);
+  }
+  .choix-final input[type="text"] {
+    font: inherit; font-size: 14px; color: var(--texte);
+    padding: 8px 12px; border-radius: 4px;
+    border: 1px solid var(--trait-fort); background: var(--fond);
+  }
+  .choix-final input[type="text"]:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px;
+  }
+  .choix-final pre {
+    margin: 0; padding: var(--ec-3) var(--ec-4);
+    border-radius: 4px; border: 1px solid var(--trait);
+    background: var(--fond);
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+    font-size: 12.5px; line-height: 1.7;
+    white-space: pre-wrap; word-break: break-word;
+  }
+
+  .copier {
+    appearance: none; -webkit-appearance: none;
+    font: inherit; font-size: 12px; font-weight: 650;
+    padding: 4px 12px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--trait-fort);
+    background: transparent; color: var(--texte);
+  }
+  .copier:hover { background: var(--carte-haut); border-color: var(--accent); }
+  .copier:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .copier[data-fait="oui"] { color: var(--accent); border-color: var(--accent); }
+
+  .mot { margin: 0; color: var(--sourd); font-size: 13.5px; max-width: 68ch; }
+  .mot b { color: var(--texte); font-weight: 620; }
+  footer { color: var(--sourd); font-size: 13px; max-width: 70ch; }
+</style>
+
+<div class="page">
+  <div class="chapeau">
+    <h1 id="titre"></h1>
+    <p id="intro"></p>
+    <dl class="invariants" id="invariants"></dl>
+  </div>
+
+  <div class="atelier">
+    <div class="rail" id="rail"></div>
+    <div class="colonne">
+      <section class="carte">
+        <header><h2 id="titre-specimen">En place</h2><span class="note" id="note-specimen"></span></header>
+        <div class="scene" id="scene"></div>
+      </section>
+      <section class="carte" id="carte-loupe" hidden>
+        <header><h2 id="titre-loupe">À la loupe</h2></header>
+        <div class="corps loupe" id="corps-loupe">
+          <div class="vue" id="vue"></div>
+          <div class="fiche">
+            <dl id="fiche"></dl>
+            <div class="reglages" id="bloc-reglage" hidden></div>
+          </div>
+        </div>
+      </section>
+      <section class="carte" id="carte-choix">
+        <header>
+          <h2>Votre choix</h2>
+          <button type="button" class="copier" id="copier-choix">Copier le prompt</button>
+        </header>
+        <div class="corps choix-final">
+          <label for="ou">
+            Où l'appliquer
+            <input type="text" id="ou" placeholder="ex. l'en-tête de la page vols"
+                   autocomplete="off" spellcheck="false">
+          </label>
+          <pre id="prompt"></pre>
+        </div>
+      </section>
+
+      <section class="carte technique" id="carte-technique" hidden>
+        <header>
+          <h2>La technique</h2>
+          <button type="button" class="copier" id="copier">Copier</button>
+        </header>
+        <pre><code id="code"></code></pre>
+      </section>
+
+      <p class="mot" id="mot"></p>
+    </div>
+  </div>
+
+  <footer id="pied"></footer>
+</div>
+
+<script>
+/* ====================================================================
+   LE GABARIT NE CONNAIT QUE CET OBJET.
+
+   Tout le reste — rail, familles, selection au clavier, reglage
+   contextuel, fiche, themes, mise en page — est deja cable en dessous.
+   Remplacer PLANCHE, et rien d'autre.
+
+   `specimen(hote, valeur)` et `loupe(hote, valeur)` recoivent un element
+   VIDE et y ecrivent ce qu'elles veulent : SVG, canvas, DOM.
+
+   L'exemple ci-dessous est un exemple : trois traitements de coin. Il
+   tourne tel quel pour qu'on voie la structure, il se remplace en bloc.
+   ==================================================================== */
+
+const SVGNS = "http://www.w3.org/2000/svg";
+const svg = (parent, vb, contenu) => {
+  const e = document.createElementNS(SVGNS, "svg");
+  e.setAttribute("viewBox", vb);
+  e.setAttribute("aria-hidden", "true");
+  e.innerHTML = contenu;
+  parent.append(e);
+  return e;
+};
+
+const PLANCHE = {
+  titre: "En-têtes & heros relevés",
+  largeurSpecimen: "480px",
+  intro: "Refonte sur RELEVÉ : chaque variante vient d'une app fintech en "
+       + "production (Monzo, Revolut, Riseo, FluxPay — réf. composants-fintech-reels). "
+       + "Le header réel est plat ; le caractère vit dans le HERO. Contenu constant, "
+       + "seul le pattern change.",
+  invariants: [
+    ["Cadre spécimen", "460 × 240 px"],
+    ["Contenu", "Camille · 1 254 500 · mêmes services"],
+    ["Encre", "relevée par spécimen (clair ou sombre)"],
+  ],
+  noteSpecimen: "Chaque spécimen est une PORTION d'écran ; le fond court bord à bord.",
+  note: "Issue du relevé d'apps réelles — remplace la planche « découpes décoratives » "
+      + "(faute documentée §1 de la référence). Rien n'est appliqué aux écrans v1-v3.",
+
+  variantes: [
+
+    /* ============ FAMILLE 1 — EN-TÊTES RELEVÉS (plats) ============ */
+    {
+      cle: "plat-clair", famille: "En-têtes relevés", nom: "Plat clair — identité",
+      tag: "Riseo · Monzo",
+      resume: "Avatar + salutation + cloche. Le header réel.",
+      fiche: [["Fonctions", "identité · alerte"], ["Relevé", "Riseo (home clair), Monzo"],
+              ["Coût", "un flex, trivial"]],
+      mot: "Le header s'efface : il dit qui tu es et s'il s'est passé quelque "
+         + "chose. Tout le caractère est laissé au hero.",
+      reglages: [
+        { cle: "h", etiquette: "Hauteur", min: 52, max: 76, pas: 2, defaut: 64, unite: (v) => `${v} px` },
+        { cle: "av", etiquette: "Avatar", min: 28, max: 44, pas: 1, defaut: 36, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M8 22 A6 6 0 1 1 8 21.9 M20 18 H36 M20 26 H32 M46 18 A4 4 0 1 1 46 17.9",
+      specimen: (hote, g) => {
+        hote.innerHTML =
+          `<div style="background:#F3F4F2;padding-bottom:26px">
+             <div style="display:flex;align-items:center;gap:12px;height:${g.h}px;padding:0 20px;background:#fff;border-bottom:1px solid #E7E9E7">
+               <span style="width:${g.av}px;height:${g.av}px;border-radius:50%;background:#DDE2DD;display:grid;place-items:center;font-weight:600;font-size:${Math.round(g.av*.36)}px;color:#111">CL</span>
+               <b style="font-size:15px;color:#111;font-weight:600">Bonsoir, Camille</b>
+               <span style="flex:1"></span>
+               ${cloche(38,"#111","#E7E9E7","#fff")}
+             </div>
+             <div style="padding:18px 20px 0;color:#8a8f8a;font-size:12.5px">Solde</div>
+             <div style="padding:2px 20px 0;color:#111;font-weight:650;font-size:34px;font-variant-numeric:tabular-nums">1 254 500<span style="opacity:.4">,00</span></div>
+           </div>`;
+      },
+      technique: (g) => `.header{display:flex;align-items:center;gap:12px;height:${g.h}px;
+  padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border);}
+.avatar{width:${g.av}px;height:${g.av}px;border-radius:50%;}
+/* le caractère est dans le hero, pas ici */`,
+    },
+    {
+      cle: "sombre-pill", famille: "En-têtes relevés", nom: "Sombre à recherche",
+      tag: "Revolut",
+      resume: "Avatar + pill de recherche + 2 actions rondes",
+      fiche: [["Fonctions", "identité · recherche · 2 raccourcis"], ["Relevé", "Revolut (home sombre)"],
+              ["Coût", "un flex, trivial"]],
+      mot: "La recherche prend le centre : l'app assume d'être un OUTIL qu'on "
+         + "interroge. Dense mais plat — aucune sculpture.",
+      reglages: [
+        { cle: "h", etiquette: "Hauteur", min: 52, max: 76, pas: 2, defaut: 60, unite: (v) => `${v} px` },
+        { cle: "rp", etiquette: "Rayon de la pill", min: 10, max: 22, pas: 1, defaut: 22, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M8 22 A6 6 0 1 1 8 21.9 M16 17 H36 A5 5 0 0 1 36 27 H16 A5 5 0 0 1 16 17 M44 18 A4 4 0 1 1 44 17.9",
+      specimen: (hote, g) => {
+        hote.innerHTML =
+          `<div style="background:#101216;padding-bottom:26px">
+             <div style="display:flex;align-items:center;gap:10px;height:${g.h}px;padding:0 16px">
+               <span style="width:34px;height:34px;border-radius:50%;background:#2A2E36;display:grid;place-items:center;font-weight:600;font-size:12px;color:#EDEFF2">CL</span>
+               <span style="flex:1;height:38px;border-radius:${g.rp}px;background:#1C1F25;display:flex;align-items:center;gap:8px;padding:0 14px;color:#7C828C;font-size:13px">${loupe(14,"#7C828C")} Rechercher</span>
+               ${rondIc(34,"#1C1F25", stat(15,"#EDEFF2"))}
+               ${rondIc(34,"#1C1F25", carte(15,"#EDEFF2"))}
+             </div>
+             <div style="padding:16px 18px 0;color:#7C828C;font-size:12px">Personnel · Solde</div>
+             <div style="padding:2px 18px 0;color:#F2F4F6;font-weight:650;font-size:32px;font-variant-numeric:tabular-nums">1 254 500</div>
+           </div>`;
+      },
+      technique: (g) => `.header{display:flex;align-items:center;gap:10px;height:${g.h}px;padding:0 16px}
+.search-pill{flex:1;height:38px;border-radius:${g.rp}px;background:var(--surface-2)}
+.icon-round{width:34px;height:34px;border-radius:50%;background:var(--surface-2)}`,
+    },
+    {
+      cle: "deux-lignes", famille: "En-têtes relevés", nom: "Salutation deux lignes",
+      tag: "FluxPay",
+      resume: "« Bonsoir » discret, le NOM en grand, cloche en cercle",
+      fiche: [["Fonctions", "identité (accentuée) · alerte"], ["Relevé", "FluxPay (dark)"],
+              ["Coût", "deux lignes de texte"]],
+      mot: "Le nom devient le titre de la page : l'app parle À quelqu'un. "
+         + "Chaleureux sans un seul ornement.",
+      reglages: [
+        { cle: "tn", etiquette: "Taille du nom", min: 18, max: 30, pas: 1, defaut: 24, unite: (v) => `${v} px` },
+        { cle: "cc", etiquette: "Cercle de la cloche", min: 34, max: 48, pas: 1, defaut: 42, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M8 14 H22 M8 24 H34 M46 18 A5 5 0 1 1 46 17.9",
+      specimen: (hote, g) => {
+        hote.innerHTML =
+          `<div style="background:#0E0F12;padding:0 0 26px">
+             <div style="display:flex;align-items:center;padding:18px 20px 0">
+               <div>
+                 <div style="color:#8B909B;font-size:13px">Bonsoir</div>
+                 <div style="color:#F4F5F7;font-weight:650;font-size:${g.tn}px;letter-spacing:-.01em">Camille Laurent</div>
+               </div>
+               <span style="flex:1"></span>
+               ${cloche(g.cc,"#F4F5F7","#2A2E36","transparent")}
+             </div>
+             <div style="margin:18px 20px 0;padding:16px 18px;border-radius:18px;background:#16181D;border:1px solid #23262D">
+               <div style="color:#8B909B;font-size:12px">N° de compte ····9654</div>
+               <div style="color:#F4F5F7;font-weight:650;font-size:30px;font-variant-numeric:tabular-nums">1 254 500<span style="opacity:.4">,00</span></div>
+             </div>
+           </div>`;
+      },
+      technique: (g) => `.greeting small{color:var(--muted);font-size:13px}
+.greeting b{font-size:${g.tn}px;font-weight:650}
+.bell{width:${g.cc}px;height:${g.cc}px;border-radius:50%;border:1px solid var(--border);background:transparent}`,
+    },
+
+    /* ============ FAMILLE 2 — HEROS DE SOLDE (le caractère) ============ */
+    {
+      cle: "balance-simple", famille: "Heros de solde", nom: "Balance nue",
+      tag: "Riseo",
+      resume: "Label discret + montant énorme, décimales atténuées",
+      fiche: [["Relevé", "Riseo « Total Balance $12,458.67 »"], ["Coût", "typographie seule"]],
+      mot: "Le chiffre EST l'écran. Les décimales s'effacent pour que l'œil "
+         + "lise le rond en un saut.",
+      reglages: [
+        { cle: "t", etiquette: "Taille du montant", min: 30, max: 56, pas: 1, defaut: 42, unite: (v) => `${v} px` },
+        { cle: "od", etiquette: "Opacité des décimales", min: 25, max: 70, pas: 5, defaut: 40, unite: (v) => `${v} %` },
+      ],
+      vignette: () => "M8 30 H14 M18 22 H30 V34 M34 30 H44",
+      specimen: (hote, g) => {
+        hote.innerHTML =
+          `<div style="background:#F3F4F2;padding:26px 0">
+             <div style="background:#fff;padding:22px 20px;border-top:1px solid #E7E9E7;border-bottom:1px solid #E7E9E7">
+               <div style="color:#8a8f8a;font-size:12.5px;display:flex;align-items:center;gap:6px">Solde ${oeil(13,"#8a8f8a")}</div>
+               <div style="color:#111;font-weight:650;font-size:${g.t}px;letter-spacing:-.02em;font-variant-numeric:tabular-nums">1 254 500<span style="opacity:${g.od/100}">,00</span></div>
+             </div>
+           </div>`;
+      },
+      technique: (g) => `.hero .label{font-size:12.5px;color:var(--muted)}
+.hero .amount{font-size:${g.t}px;font-weight:650;font-variant-numeric:tabular-nums}
+.hero .decimals{opacity:${(g.od/100).toFixed(2)}}`,
+    },
+    {
+      cle: "carte-solde", famille: "Heros de solde", nom: "Carte de solde",
+      tag: "FluxPay",
+      resume: "N° de compte + montant + delta vert + œil",
+      fiche: [["Relevé", "FluxPay « $22,675.06 · +$4567 (12.4%) »"], ["Coût", "une carte"]],
+      mot: "Le solde devient un OBJET qu'on possède. Le delta raconte la "
+         + "semaine ; l'œil rend la pudeur possible en un geste.",
+      reglages: [
+        { cle: "r", etiquette: "Rayon de la carte", min: 12, max: 30, pas: 1, defaut: 20, unite: (v) => `${v} px` },
+        { cle: "t", etiquette: "Taille du montant", min: 26, max: 44, pas: 1, defaut: 34, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M8 12 H48 A4 4 0 0 1 52 16 V38 A4 4 0 0 1 48 42 H8 Z M14 22 H30 M14 30 H40",
+      specimen: (hote, g) => {
+        hote.innerHTML =
+          `<div style="background:#F3F4F2;padding:26px 20px;display:grid">
+             <div style="background:#fff;border:1px solid #E7E9E7;border-radius:${g.r}px;padding:18px 20px;box-shadow:0 1px 3px rgb(0 0 0/.05)">
+               <div style="display:flex;align-items:center;color:#8a8f8a;font-size:12px">N° de compte ····9654 <span style="flex:1"></span>${oeil(15,"#8a8f8a")}</div>
+               <div style="color:#111;font-weight:650;font-size:${g.t}px;font-variant-numeric:tabular-nums;margin-top:4px">1 254 500<span style="opacity:.4">,00</span></div>
+               <div style="color:#178A5B;font-size:13px;font-weight:600;margin-top:4px">+4 567 · 12,4 % cette semaine</div>
+             </div>
+           </div>`;
+      },
+      technique: (g) => `.solde-card{border-radius:${g.r}px;border:1px solid var(--border);padding:18px 20px}
+.solde-card .amount{font-size:${g.t}px}
+.solde-card .delta{color:var(--positive);font-size:13px;font-weight:600}`,
+    },
+    {
+      cle: "actions-circulaires", famille: "Heros de solde", nom: "Balance + actions rondes",
+      tag: "Revolut · Monzo",
+      resume: "Le montant, puis 4 cercles icône+label",
+      fiche: [["Relevé", "Revolut « Add money · Move · Details · More »"], ["Coût", "flex de cercles"]],
+      mot: "Les verbes vivent SOUS le chiffre, en rond, à égalité. C'est la "
+         + "grammaire fintech la plus universelle du relevé.",
+      reglages: [
+        { cle: "d", etiquette: "Diamètre des cercles", min: 44, max: 64, pas: 2, defaut: 54, unite: (v) => `${v} px` },
+        { cle: "gap", etiquette: "Espacement", min: 12, max: 32, pas: 2, defaut: 22, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M10 14 H36 M10 32 A5 5 0 1 1 10 31.9 M24 32 A5 5 0 1 1 24 31.9 M38 32 A5 5 0 1 1 38 31.9",
+      specimen: (hote, g) => {
+        const act = (svg, lbl) =>
+          `<div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+             <span style="width:${g.d}px;height:${g.d}px;border-radius:50%;background:#fff;border:1px solid #E4E6E4;display:grid;place-items:center;box-shadow:0 1px 2px rgb(0 0 0/.05)">${svg}</span>
+             <span style="font-size:11.5px;color:#5c625c">${lbl}</span>
+           </div>`;
+        hote.innerHTML =
+          `<div style="background:#F3F4F2;padding:24px 20px 26px">
+             <div style="color:#8a8f8a;font-size:12.5px">Solde</div>
+             <div style="color:#111;font-weight:650;font-size:34px;font-variant-numeric:tabular-nums">1 254 500<span style="opacity:.4">,00</span></div>
+             <div style="display:flex;gap:${g.gap}px;margin-top:16px">
+               ${act(fleche(18,"#111",45), "Envoyer")}${act(fleche(18,"#111",225), "Recevoir")}${act(swapIc(18,"#111"), "Transférer")}${act(horloge(18,"#111"), "Historique")}
+             </div>
+           </div>`;
+      },
+      technique: (g) => `.actions{display:flex;gap:${g.gap}px}
+.action{width:${g.d}px;height:${g.d}px;border-radius:50%;background:var(--surface);
+  border:1px solid var(--border);display:grid;place-items:center}
+.action + label{font-size:11.5px;color:var(--muted)}`,
+    },
+    {
+      cle: "anneau", famille: "Heros de solde", nom: "Anneau de budget",
+      tag: "Monzo",
+      resume: "« Reste à dépenser » en progression circulaire",
+      fiche: [["Relevé", "Monzo « £87.32 Left to spend »"], ["Coût", "SVG stroke-dasharray"]],
+      mot: "Le hero ne dit plus « combien j'ai » mais « où j'en suis ». "
+         + "Le meilleur pattern quand le produit veut coacher.",
+      reglages: [
+        { cle: "ep", etiquette: "Épaisseur du trait", min: 5, max: 14, pas: 1, defaut: 9, unite: (v) => `${v} px` },
+        { cle: "pc", etiquette: "Progression", min: 15, max: 90, pas: 5, defaut: 60, unite: (v) => `${v} %` },
+      ],
+      vignette: () => "M26 8 A18 18 0 1 1 25.9 8 M26 20 V28",
+      specimen: (hote, g) => {
+        const R = 54, C = 2 * Math.PI * R, off = C * (1 - g.pc / 100);
+        hote.innerHTML =
+          `<div style="background:#F3F4F2;padding:24px 20px;display:grid;place-items:center">
+             <div style="position:relative;width:150px;height:150px">
+               <svg width="150" height="150" viewBox="0 0 150 150">
+                 <circle cx="75" cy="75" r="${R}" fill="none" stroke="#E4E6E4" stroke-width="${g.ep}"/>
+                 <circle cx="75" cy="75" r="${R}" fill="none" stroke="#178A5B" stroke-width="${g.ep}" stroke-linecap="round"
+                   stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 75 75)"/>
+               </svg>
+               <div style="position:absolute;inset:0;display:grid;place-items:center;text-align:center">
+                 <div><div style="font-weight:650;font-size:22px;color:#111;font-variant-numeric:tabular-nums">87 320</div>
+                 <div style="font-size:11px;color:#8a8f8a">reste ce mois</div></div>
+               </div>
+             </div>
+           </div>`;
+      },
+      technique: (g) => `circle.progress{stroke-width:${g.ep};stroke-linecap:round;
+  stroke-dasharray:C; stroke-dashoffset:C*(1-${g.pc}/100); transform:rotate(-90deg)}`,
+    },
+
+    /* ============ FAMILLE 3 — NAVIGATION BASSE ============ */
+    {
+      cle: "dock-fab", famille: "Navigation basse", nom: "Barre + FAB central",
+      tag: "Riseo",
+      resume: "3 items + bouton rond — posé (relevé) ou niché (option)",
+      fiche: [["Relevé", "Riseo : FAB noir POSÉ sur la barre"], ["Découpe", "seulement si elle LOGE le bouton"],
+              ["Coût", "posé : trivial · niché : masque radial"]],
+      mot: "Le seul endroit du relevé où une découpe a un SENS : elle loge le "
+         + "bouton. À 0 la barre est plate comme dans Riseo ; creuser est un choix.",
+      reglages: [
+        { cle: "R", etiquette: "Rayon du bouton", min: 22, max: 32, pas: 1, defaut: 26, unite: (v) => `${v} px` },
+        { cle: "prof", etiquette: "Encoche (0 = posé)", min: 0, max: 14, pas: 1, defaut: 0, unite: (v) => v === 0 ? "posé" : `${v} px` },
+      ],
+      vignette: () => "M4 34 H48 V44 H4 Z M26 22 A8 8 0 1 1 25.9 22",
+      specimen: (hote, g) => {
+        const h = 56, Rt = g.R + 6;
+        const cut = g.prof > 0
+          ? `-webkit-mask:linear-gradient(#000 0 0),radial-gradient(circle ${Rt}px at 50% 0,transparent ${Rt-.5}px,#000 ${Rt}px);-webkit-mask-composite:source-in;mask:linear-gradient(#000 0 0),radial-gradient(circle ${Rt}px at 50% 0,transparent ${Rt-.5}px,#000 ${Rt}px);mask-composite:intersect;`
+          : "";
+        const lift = g.prof > 0 ? g.R : Math.round(g.R * .66);
+        hote.innerHTML =
+          `<div style="background:#F3F4F2;padding:40px 16px 16px">
+             <div style="position:relative;max-width:330px;margin:0 auto;height:${h + lift}px">
+               <div style="position:absolute;left:0;right:0;bottom:0;height:${h}px;background:#fff;border:1px solid #E7E9E7;border-radius:18px;${cut}filter:drop-shadow(0 -1px 3px rgb(0 0 0/.06))"></div>
+               <div style="position:absolute;left:50%;transform:translateX(-50%);bottom:${h - lift}px;width:${2*g.R}px;height:${2*g.R}px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center;font-size:${g.R*.85}px;box-shadow:0 4px 10px rgb(0 0 0/.25)">+</div>
+               <div style="position:absolute;left:0;right:0;bottom:0;height:${h}px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;font-size:11px;color:#8a8f8a">
+                 <span style="color:#111;font-weight:600">Accueil</span><span style="width:${2*Rt+8}px"></span><span>Profil</span>
+               </div>
+             </div>
+           </div>`;
+      },
+      technique: (g) => g.prof === 0
+        ? `/* relevé Riseo : FAB simplement POSÉ, aucune découpe */
+.dock{height:56px;border-radius:18px}
+.fab{width:${2*g.R}px;height:${2*g.R}px;border-radius:50%;transform:translateY(-${Math.round(g.R*.66)}px)}`
+        : `/* option nichée : la découpe LOGE le bouton (air ${6}px) */
+.dock{border-radius:18px;
+  mask:linear-gradient(#000 0 0),radial-gradient(circle ${g.R+6}px at 50% 0,transparent ${g.R+5.5}px,#000 ${g.R+6}px);
+  mask-composite:intersect;filter:drop-shadow(0 -1px 3px rgb(0 0 0/.06))}`,
+    },
+
+    /* ============ FAMILLE 4 — SURFACES DE CARTE (conservée) ============ */
+    {
+      cle: "hairline", famille: "Surfaces de carte", nom: "Bordure fine", tag: "v1",
+      resume: "Le trait de la v1 shadcn",
+      fiche: [["Matière", "trait 1px, ombre quasi nulle"], ["Coût", "trivial"]],
+      mot: "La carte est un contour, pas un volume. Précis, silencieux, très "
+         + "« outil » — c'est la retenue qui parle.",
+      reglages: [
+        { cle: "coins", etiquette: "Rayon des coins", min: 8, max: 28, pas: 1, defaut: 20, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M8 8 H44 A6 6 0 0 1 50 14 V46 H8 Z",
+      specimen: (hote, g) => carteSpec(hote, `background:#fff;border:1px solid #E4E6E4;border-radius:${g.coins}px;box-shadow:0 1px 2px rgb(0 0 0/.04)`),
+      technique: (g) => `.carte{background:#fff;border:1px solid var(--border);
+  border-radius:${g.coins}px;box-shadow:0 1px 2px rgb(0 0 0/.04);}`,
+    },
+    {
+      cle: "elevation", famille: "Surfaces de carte", nom: "Élévation", tag: "v3",
+      resume: "La profondeur de la v3 Open Props",
+      fiche: [["Matière", "ombre portée, zéro bordure"], ["Coût", "trivial"]],
+      mot: "La carte flotte au-dessus du sol. Aérée, tactile — l'ombre fait "
+         + "le travail que le trait faisait.",
+      reglages: [
+        { cle: "elev", etiquette: "Profondeur", min: 1, max: 5, pas: 1, defaut: 3, unite: (v) => `niv. ${v}` },
+        { cle: "coins", etiquette: "Rayon des coins", min: 8, max: 32, pas: 1, defaut: 24, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M10 6 H46 V42 H10 Z M14 46 H50 V48 H14 Z",
+      specimen: (hote, g) => {
+        const o = ["0 1px 2px rgb(0 0 0/.07)","0 2px 6px rgb(0 0 0/.09)","0 6px 16px rgb(0 0 0/.11)","0 10px 26px rgb(0 0 0/.13)","0 16px 40px rgb(0 0 0/.16)"];
+        carteSpec(hote, `background:#fff;border-radius:${g.coins}px;box-shadow:${o[g.elev-1]}`);
+      },
+      technique: (g) => `.carte{background:#fff;border:0;border-radius:${g.coins}px;
+  box-shadow:var(--shadow-${g.elev}); /* Open Props */}`,
+    },
+    {
+      cle: "verre", famille: "Surfaces de carte", nom: "Verre dépoli",
+      resume: "La surface laisse passer le fond",
+      fiche: [["Matière", "blur + alpha + trait clair"], ["Coût", "backdrop-filter"]],
+      mot: "La carte devient une vitre : elle appartient au fond autant qu'au "
+         + "premier plan. À réserver aux surfaces qui survolent.",
+      reglages: [
+        { cle: "flou", etiquette: "Flou", min: 4, max: 24, pas: 1, defaut: 12, unite: (v) => `${v} px` },
+        { cle: "coins", etiquette: "Rayon des coins", min: 8, max: 32, pas: 1, defaut: 24, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M8 8 H50 V46 H8 Z M14 14 L28 28 M22 12 L40 30",
+      specimen: (hote, g) => carteSpec(hote,
+        `background:rgb(255 255 255/.6);backdrop-filter:blur(${g.flou}px);-webkit-backdrop-filter:blur(${g.flou}px);
+         border:1px solid rgb(255 255 255/.7);border-radius:${g.coins}px;box-shadow:0 4px 14px rgb(0 0 0/.08)`,
+        `background:
+           radial-gradient(220px 140px at 20% 20%, #BFE3D2 0%, transparent 60%),
+           radial-gradient(240px 160px at 85% 75%, #C7D2F5 0%, transparent 60%),
+           #F3F4F2`),
+      technique: (g) => `.carte{background:rgb(255 255 255/.6);
+  backdrop-filter:blur(${g.flou}px);border:1px solid rgb(255 255 255/.7);
+  border-radius:${g.coins}px;}`,
+    },
+    {
+      cle: "encre", famille: "Surfaces de carte", nom: "Encre teintée",
+      resume: "Fond Radix cran 3, texte cran 11",
+      fiche: [["Matière", "Radix Colors — contrastes garantis"], ["Coût", "trivial"]],
+      mot: "La couleur devient une SURFACE, pas un trait. On choisit une "
+         + "humeur, pas un hex.",
+      reglages: [
+        { cle: "encre", etiquette: "Encre", min: 1, max: 5, pas: 1, defaut: 1,
+          unite: (v) => ["jade","indigo","amber","cyan","gray"][v-1] },
+        { cle: "coins", etiquette: "Rayon des coins", min: 8, max: 32, pas: 1, defaut: 20, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M8 8 H50 V46 H8 Z M14 36 H30",
+      specimen: (hote, g) => {
+        const enc = [["#E9F6EF","#1A7A54","#D7EFE2"],["#EEF1FD","#3A4BC8","#E0E6FB"],["#FFF1D6","#8F5E00","#FFE3AE"],["#E3F6F9","#0C6E7E","#CDEFF5"],["#F0F0F0","#3D3D3D","#E6E6E6"]][g.encre-1];
+        carteSpec(hote, `background:${enc[0]};border:1px solid ${enc[2]};border-radius:${g.coins}px`, null, enc[1]);
+      },
+      technique: (g) => {
+        const n = ["jade","indigo","amber","cyan","gray"][g.encre-1];
+        return `.carte{background:var(--${n}-3);border:1px solid var(--${n}-4);
+  border-radius:${g.coins}px;color:var(--${n}-11);}`;
+      },
+    },
+    {
+      cle: "creuse", famille: "Surfaces de carte", nom: "Surface concave",
+      resume: "La carte s'enfonce au lieu de flotter",
+      fiche: [["Matière", "ombres internes croisées"], ["Coût", "trivial ; rare donc signifiant"]],
+      mot: "L'inverse de l'élévation : la surface est CREUSÉE dans le sol. "
+         + "Parfait pour un réceptacle — un solde, une zone de dépôt.",
+      reglages: [
+        { cle: "prof", etiquette: "Profondeur", min: 1, max: 5, pas: 1, defaut: 3, unite: (v) => `niv. ${v}` },
+        { cle: "coins", etiquette: "Rayon des coins", min: 8, max: 32, pas: 1, defaut: 22, unite: (v) => `${v} px` },
+      ],
+      vignette: () => "M8 8 H50 V46 H8 Z M12 12 H46 V42 H12 Z",
+      specimen: (hote, g) => {
+        const p = g.prof;
+        carteSpec(hote, `background:#EFF1EF;border-radius:${g.coins}px;
+           box-shadow:inset 0 ${p}px ${2*p+2}px rgb(0 0 0/.${String(6+2*p).padStart(2,"0")}), inset 0 -1px 2px rgb(255 255 255/.9)`);
+      },
+      technique: (g) => `.carte{background:var(--sol-2);border-radius:${g.coins}px;
+  box-shadow:inset 0 ${g.prof}px ${2*g.prof+2}px rgb(0 0 0/.${6+2*g.prof}),
+             inset 0 -1px 2px rgb(255 255 255/.9);}`,
+    },
+  ],
+};
+
+/* ---------- petits pictos inline (stroke 1.75) ---------- */
+function svgW(w, inner){ return `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`; }
+function cloche(taille, encre, bord, fond){
+  return `<span style="width:${taille}px;height:${taille}px;border-radius:50%;border:1px solid ${bord};background:${fond};display:grid;place-items:center">
+    ${svgW(Math.round(taille*.45), `<g stroke="${encre}"><path d="M18 9a6 6 0 1 0-12 0c0 6-2.5 7-2.5 7h17S18 15 18 9"/><path d="M10.2 20a2 2 0 0 0 3.6 0"/></g>`)}</span>`;
+}
+function rondIc(taille, fond, inner){
+  return `<span style="width:${taille}px;height:${taille}px;border-radius:50%;background:${fond};display:grid;place-items:center">${inner}</span>`;
+}
+function loupe(t, c){ return svgW(t, `<g stroke="${c}"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></g>`); }
+function stat(t, c){ return svgW(t, `<g stroke="${c}"><path d="M4 19V10M10 19V5M16 19v-6M20 19H4"/></g>`); }
+function carte(t, c){ return svgW(t, `<g stroke="${c}"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/></g>`); }
+function fleche(t, c, deg){ return `<span style="display:grid;transform:rotate(${deg}deg)">${svgW(t, `<g stroke="${c}"><path d="M12 5v14M6 11l6-6 6 6"/></g>`)}</span>`; }
+function swapIc(t, c){ return svgW(t, `<g stroke="${c}"><path d="m17 4 4 4-4 4"/><path d="M21 8H7"/><path d="m7 12-4 4 4 4"/><path d="M3 16h14"/></g>`); }
+function horloge(t, c){ return svgW(t, `<g stroke="${c}"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></g>`); }
+function oeil(t, c){ return svgW(t, `<g stroke="${c}"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></g>`); }
+
+/* spécimen de carte commun — contenu constant, seule la surface change */
+function carteSpec(hote, surface, fond, encreTexte) {
+  hote.innerHTML =
+    `<div style="${fond || "background:#F3F4F2"};padding:26px;display:grid;place-items:center">
+       <div style="width:300px;height:150px;padding:18px;display:flex;flex-direction:column;justify-content:space-between;${surface}">
+         <span style="width:36px;height:36px;border-radius:10px;background:${encreTexte ? "rgb(255 255 255/.55)" : "#EFF1EF"};display:grid;place-items:center">
+           ${svgW(17, `<g stroke="${encreTexte || "#111"}"><path d="M7 17 17 7"/><path d="M9 7h8v8"/></g>`)}
+         </span>
+         <div>
+           <div style="font-weight:600;color:${encreTexte || "#111"};font-size:14.5px">Envoyer</div>
+           <div style="font-size:12px;color:${encreTexte ? encreTexte + "CC" : "#8a8f8a"};margin-top:2px">1 254 500</div>
+         </div>
+       </div>
+     </div>`;
+}
+
+/* ==================  LE GABARIT — ne rien changer  ================== */
+const $ = (id) => document.getElementById(id);
+let courant = PLANCHE.variantes[0];
+
+/* LES REGLAGES, en deux regimes.
+   « reglage » (singulier) : un curseur, et les fonctions recoivent un
+   NOMBRE. C'est la forme courte, pour une planche a un parametre.
+   « reglages » (pluriel)  : plusieurs curseurs, et les fonctions
+   recoivent un OBJET indexe par la cle de chaque reglage. C'est la
+   forme qui permet de regler l'ANGLE d'un flanc separement de sa
+   profondeur — deux grandeurs independantes qu'un curseur unique
+   forcerait a confondre. */
+const listeReglages = (v) =>
+  v.reglages ? v.reglages : (v.reglage ? [{ ...v.reglage, cle: "__seul" }] : []);
+
+const valeurs = {};
+PLANCHE.variantes.forEach((v) => {
+  valeurs[v.cle] = {};
+  listeReglages(v).forEach((r) => { valeurs[v.cle][r.cle] = r.defaut; });
+});
+const valeurDe = (v) =>
+  v.reglages ? valeurs[v.cle] : (v.reglage ? valeurs[v.cle].__seul : undefined);
+
+if (PLANCHE.largeurSpecimen)
+  document.documentElement.style.setProperty("--largeur-specimen", PLANCHE.largeurSpecimen);
+$("titre").textContent = PLANCHE.titre;
+$("intro").innerHTML = PLANCHE.intro || "";
+$("note-specimen").textContent = PLANCHE.noteSpecimen || "";
+$("pied").innerHTML = PLANCHE.pied || PLANCHE.note || "";
+
+(PLANCHE.invariants || []).forEach(([nom, valeur]) => {
+  const d = document.createElement("div");
+  const dt = document.createElement("dt"); dt.textContent = nom;
+  const dd = document.createElement("dd"); dd.textContent = valeur;
+  d.append(dt, dd); $("invariants").append(d);
+});
+if (!(PLANCHE.invariants || []).length) $("invariants").hidden = true;
+
+/* le rail — groupe par famille, dans l'ordre d'apparition */
+(function rail() {
+  let famille = null, bloc = null;
+  PLANCHE.variantes.forEach((v) => {
+    if (v.famille !== famille) {
+      famille = v.famille;
+      bloc = document.createElement("div");
+      bloc.className = "famille";
+      if (famille) {
+        const h = document.createElement("h2");
+        h.textContent = famille;
+        bloc.append(h);
+      }
+      $("rail").append(bloc);
+    }
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "choix";
+    b.dataset.cle = v.cle;
+    b.setAttribute("aria-pressed", v === courant ? "true" : "false");
+
+    if (v.vignette) {
+      const s = document.createElementNS(SVGNS, "svg");
+      s.setAttribute("class", "vignette");
+      s.setAttribute("viewBox", "-2 -2 52 60");
+      s.setAttribute("width", "30"); s.setAttribute("height", "35");
+      s.setAttribute("aria-hidden", "true");
+      const p = document.createElementNS(SVGNS, "path");
+      p.setAttribute("d", v.vignette(valeurDe(v)));
+      p.setAttribute("fill", "none");
+      p.setAttribute("stroke", "currentColor");
+      p.setAttribute("stroke-width", "3.5");
+      p.setAttribute("stroke-linecap", "round");
+      s.append(p); b.append(s);
+    }
+    const nom = document.createElement("span");
+    nom.className = "nom";
+    const t = document.createElement("b");
+    t.textContent = v.tag ? `${v.nom} · ${v.tag}` : v.nom;
+    const r = document.createElement("span");
+    r.textContent = v.resume || "";
+    nom.append(t, r);
+    b.append(nom);
+    b.addEventListener("click", () => choisir(v));
+    bloc.append(b);
+  });
+})();
+
+function dessiner() {
+  const v = valeurDe(courant);
+
+  $("scene").replaceChildren();
+  courant.specimen($("scene"), v);
+
+  const aLoupe = typeof courant.loupe === "function";
+  $("carte-loupe").hidden = !aLoupe && !courant.fiche && !courant.reglage;
+  $("vue").replaceChildren();
+  if (aLoupe) courant.loupe($("vue"), v);
+  $("vue").hidden = !aLoupe;
+  /* le titre dit ce qui est REELLEMENT montre : annoncer « a la loupe »
+     sans loupe est un mensonge d'etiquette, et la colonne vide se ferme */
+  $("titre-loupe").textContent = aLoupe ? "À la loupe" : "Détail";
+  $("corps-loupe").classList.toggle("sans-vue", !aLoupe);
+
+  $("fiche").replaceChildren();
+  (courant.fiche || []).forEach(([k, val]) => {
+    const d = document.createElement("div"); d.className = "ligne";
+    const dt = document.createElement("dt"); dt.textContent = k;
+    const dd = document.createElement("dd"); dd.textContent = val;
+    d.append(dt, dd); $("fiche").append(d);
+  });
+
+  /* LE PROMPT. Il doit contenir TOUT ce qu'il faut pour agir sans
+     revenir poser de question : la variante et sa famille, la valeur de
+     CHAQUE reglage avec son unite, les invariants a tenir, et la voie de
+     mise en oeuvre. Un nom de variante seul ne suffit pas — sans les
+     chiffres, on repart sur les valeurs par defaut, qui ne sont pas
+     celles que le lecteur regardait. */
+  const dits = listeReglages(courant)
+    .map((r) => `${r.etiquette} : ${r.unite(valeurs[courant.cle][r.cle])}`);
+  const oeuvre = (courant.fiche || [])
+    .filter(([k]) => /mise en œuvre|mise en oeuvre|construction/i.test(k))
+    .map(([, val]) => val);
+  const ou = ($("ou").value || "").trim();
+
+  $("prompt").textContent = [
+    `Applique « ${courant.nom} »${courant.famille ? ` (${courant.famille.toLowerCase()})` : ""}`
+      + `${ou ? ` sur ${ou}` : ""}.`,
+    dits.length ? `Réglages : ${dits.join(" · ")}.` : null,
+    (PLANCHE.invariants || []).length
+      ? `Invariants à tenir : ${PLANCHE.invariants.map(([k, val]) => `${k.toLowerCase()} ${val}`).join(", ")}.`
+      : null,
+    oeuvre.length ? `Mise en œuvre : ${oeuvre.join(", ")}.` : null,
+    courant.technique ? `Le CSS de référence est celui du panneau « la technique » de la planche.` : null,
+    !ou ? `(indique où l'appliquer dans le champ ci-dessus)` : null,
+  ].filter(Boolean).join("\n");
+
+  const code = typeof courant.technique === "function" ? courant.technique(v) : null;
+  $("carte-technique").hidden = !code;
+  $("code").textContent = code || "";
+  $("copier").textContent = "Copier";
+  $("copier").dataset.fait = "non";
+
+  $("mot").innerHTML = courant.mot ? `<b>${courant.nom}.</b> ${courant.mot}` : "";
+}
+
+/* LA COPIE, EN TROIS VOIES — et il en faut trois.
+   Une planche se consulte souvent dans un cadre CLOISONNE (artifact,
+   apercu, bac a sable). L'API moderne y est refusee sans bruit :
+   « navigator.clipboard » existe, sa promesse est simplement rejetee —
+   parfois meme silencieusement. Ne se fier qu'a elle, c'est livrer un
+   bouton qui ne fait rien. On descend donc les voies dans l'ordre :
+
+     1. navigator.clipboard.writeText — quand le cadre l'autorise ;
+     2. une zone de saisie hors champ + execCommand — l'ancienne voie,
+        celle qui passe justement la ou la premiere est refusee ;
+     3. a defaut, on SELECTIONNE le bloc et on le DIT : le lecteur n'a
+        plus qu'un Ctrl+C a faire, et le bouton ne ment pas.
+
+   Le bouton n'annonce « Copié » que si une voie a REUSSI. */
+async function copier(bouton, source, motDefaut) {
+  const texte = source.textContent;
+  let fait = false;
+
+  try {
+    await navigator.clipboard.writeText(texte);
+    fait = true;
+  } catch (e) { /* refuse : on descend d'une voie */ }
+
+  if (!fait) {
+    const zone = document.createElement("textarea");
+    zone.value = texte;
+    zone.setAttribute("readonly", "");
+    /* hors champ mais VISIBLE au sens du moteur : « display:none » ou
+       « visibility:hidden » rendent la selection impossible. La taille
+       de 16px evite le zoom automatique des navigateurs mobiles. */
+    zone.style.cssText = "position:fixed;top:0;left:0;width:2px;height:2px;"
+      + "padding:0;border:0;opacity:0;font-size:16px;";
+    document.body.append(zone);
+    zone.focus(); zone.select();
+    zone.setSelectionRange(0, texte.length);   /* iOS ignore « select » seul */
+    try { fait = document.execCommand("copy"); } catch (e) { fait = false; }
+    zone.remove();
+  }
+
+  if (!fait) {
+    const r = document.createRange();
+    r.selectNodeContents(source);
+    const sel = getSelection();
+    sel.removeAllRanges(); sel.addRange(r);
+  }
+
+  bouton.textContent = fait ? "Copié" : "Sélectionné · Ctrl+C";
+  bouton.dataset.fait = "oui";
+  setTimeout(() => { bouton.textContent = motDefaut; bouton.dataset.fait = "non"; }, 2400);
+}
+$("copier-choix").addEventListener("click", () =>
+  copier($("copier-choix"), $("prompt"), "Copier le prompt"));
+$("copier").addEventListener("click", () =>
+  copier($("copier"), $("code"), "Copier"));
+
+function choisir(v) {
+  courant = v;
+  document.querySelectorAll(".choix").forEach((b) =>
+    b.setAttribute("aria-pressed", b.dataset.cle === v.cle ? "true" : "false"));
+  const bloc = $("bloc-reglage");
+  const rr = listeReglages(v);
+  bloc.replaceChildren();
+  bloc.hidden = rr.length === 0;
+  rr.forEach((r) => {
+    const lab = document.createElement("label");
+    lab.htmlFor = `rg-${r.cle}`;
+    const e = document.createElement("span"); e.textContent = r.etiquette;
+    const val = document.createElement("span");
+    val.className = "valeur"; val.id = `val-${r.cle}`;
+    val.textContent = r.unite(valeurs[v.cle][r.cle]);
+    lab.append(e, val);
+
+    const inp = document.createElement("input");
+    inp.type = "range"; inp.id = `rg-${r.cle}`;
+    inp.min = r.min; inp.max = r.max; inp.step = r.pas;
+    inp.value = valeurs[v.cle][r.cle];
+    inp.addEventListener("input", (ev) => {
+      valeurs[v.cle][r.cle] = Number(ev.target.value);
+      val.textContent = r.unite(valeurs[v.cle][r.cle]);
+      dessiner();
+    });
+    bloc.append(lab, inp);
+  });
+  dessiner();
+}
+
+$("ou").addEventListener("input", dessiner);
+
+choisir(PLANCHE.variantes[0]);
+</script>
