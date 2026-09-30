@@ -68,7 +68,7 @@ for (const cible of CIBLES) {
   console.log("\n== " + cible);
   exceptions = [];
   const charge = new Promise((r) => evs.set("Page.loadEventFired", r));
-  await cmd("Page.navigate", { url: pathToFileURL(resolve(cible)).href });
+  await cmd("Page.navigate", { url: /^https?:/.test(cible) ? cible : pathToFileURL(resolve(cible)).href });
   await charge; await dodo(1200);
   test("aucune exception au chargement", exceptions.length === 0, exceptions.join(" | "));
   test("le moteur est a 25 % de caution", (await ev("REGLES.caution")) === 25, String(await ev("REGLES.caution")));
