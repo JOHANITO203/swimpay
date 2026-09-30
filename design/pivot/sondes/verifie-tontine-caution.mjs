@@ -109,6 +109,10 @@ for (const cible of CIBLES) {
   const m = /caution \(([^)]*)\)/.exec(feuille || "");
   test("Accepter le contrat : caution 82 500 F", !!m && num(m[1]) === 82500, m ? m[1] : "introuvable");
   await ev(`fermerFeuille(true)`);
+  // le solde debite a la signature : 25 % de caution + la premiere mise (defaut trouve le 30/09 :
+  // raccourci() et la signature par code debitaient encore 30 %)
+  const solde = await ev(`(() => { E = neuf(); E.cfg = { rythme: "mois", c: 30000, T: 11, B: 1, mode: "invitation" }; raccourci(); return E.solde; })()`);
+  test("solde apres signature = 148 350 - 82 500 - 30 000 = 35 850 F", solde === 35850, String(solde));
 }
 console.log(echecs ? `\n${echecs} echec(s)` : "\nTout passe.");
 process.exit(echecs ? 1 : 0);

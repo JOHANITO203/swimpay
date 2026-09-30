@@ -274,7 +274,7 @@ td.neg { color: var(--encre); }
 
   <aside class="cote">
     <h1>Tontine SwimPay</h1>
-    <p>La tontine classique dans l'app SwimPay, avec <b>les règles validées le 29 septembre</b>. Le téléphone montre ce que vit le membre, du premier écran au bilan. Ce panneau montre <b>ce que fait le système</b>, pour tout le groupe. Aucun humain ne décide.</p>
+    <p>La tontine classique dans l'app SwimPay, avec <b>les règles figées le 30 septembre</b>. Le téléphone montre ce que vit le membre, du premier écran au bilan. Ce panneau montre <b>ce que fait le système</b>, pour tout le groupe. Aucun humain ne décide.</p>
 
     <section class="regles" aria-label="Les règles">
       <div><b>25 %</b><span>de caution, rendue au fil des mises après le gain</span></div>
@@ -313,7 +313,7 @@ td.neg { color: var(--encre); }
     </section>
 
     <div class="notes">
-      <div><b>Réel :</b> les règles et tous les montants. Le moteur de cette page est le même calcul que le simulateur <b>tontine-v2.py</b>, vérifié identique. Un format saisi librement passe dans ce moteur : le tableau montre s'il tient.</div>
+      <div><b>Réel :</b> les règles et tous les montants. Le moteur de cette page est le même calcul que le simulateur <b>tontine-v3.py</b>, vérifié identique. Un format saisi librement passe dans ce moteur : le tableau montre s'il tient.</div>
       <div><b>Exemples de maquette :</b> les noms, le solde, les arrivées et départs des membres, le code secret (libre), le compte de retrait.</div>
     </div>
   </aside>
@@ -933,7 +933,7 @@ function raccourci() {
   const ordre = E.groupe.slice().sort((a, b) => a - b);
   for (let i = ordre.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ordre[i], ordre[j]] = [ordre[j], ordre[i]]; }
   E.ordre = ordre; E.revelees = n; relancerMoteur(); E.tourVu = 0; E.retire = false;
-  E.solde = 148350 - pct(cagnotteDe(E.cfg), 30) - E.cfg.c; E.soldeTontine = E.cfg.c; E.dernierPrelev = null; E.credite = false;
+  E.solde = 148350 - pct(cagnotteDe(E.cfg), REGLES.caution) - E.cfg.c; E.soldeTontine = E.cfg.c; E.dernierPrelev = null; E.credite = false;
   E.pile = ["tontines"]; E.ecran = "tontine"; E.sens = "avant"; fermerFeuille(true); rendre();
 }
 function infoPrelevement(M, q) {
@@ -1133,7 +1133,7 @@ document.addEventListener("click", (ev) => {
       const type = E.feuille;
       setTimeout(() => {
         if (type === "accepter") {
-          E.jaiAccepte = true; if (!E.acceptes.includes(0)) E.acceptes.push(0); E.solde -= pct(cagnotteDe(E.cfg), 30) + E.cfg.c; E.soldeTontine = E.cfg.c;
+          E.jaiAccepte = true; if (!E.acceptes.includes(0)) E.acceptes.push(0); E.solde -= pct(cagnotteDe(E.cfg), REGLES.caution) + E.cfg.c; E.soldeTontine = E.cfg.c;
           fermerFeuille(); rendre();
           if (E.acceptes.length >= N(E.cfg)) minuter(lancerTirage, 1400);
           else { const suite = () => { if (E.ecran !== "contrat") return; const reste = E.groupe.filter((id) => !E.acceptes.includes(id)); if (reste.length) { E.acceptes.push(reste[0]); rendre(); } if (E.acceptes.length >= N(E.cfg)) { minuter(lancerTirage, 1400); return; } minuter(suite, 450); }; minuter(suite, 450); }
