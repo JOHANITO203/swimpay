@@ -16,7 +16,7 @@ import { join, resolve } from "node:path";
 const A = resolve("../assets");
 const SORTIE = resolve("../planche-assets.html");
 const tmp = mkdtempSync(join(tmpdir(), "planche-"));
-process.on("exit", () => { try { rmSync(tmp, { recursive: true, force: true }); } catch {} });
+process.on("exit", () => { try { rmSync(tmp, { recursive: true, force: true }); } catch { /* nettoyage au mieux : processus déjà arrêté ou dossier déjà supprimé */ } });
 
 /* Classes par utilisabilite reelle, pas par gout. */
 const ASSETS = [

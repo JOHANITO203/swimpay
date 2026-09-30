@@ -31,7 +31,7 @@ const ch = spawn(CHROME, [
   "--no-first-run", "--no-default-browser-check", "--hide-scrollbars",
   "--allow-file-access-from-files", "about:blank",
 ], { stdio: "ignore" });
-const net = () => { try { ch.kill(); } catch {} try { rmSync(profil, { recursive: true, force: true }); } catch {} };
+const net = () => { try { ch.kill(); } catch { /* nettoyage au mieux : processus déjà arrêté ou dossier déjà supprimé */ } try { rmSync(profil, { recursive: true, force: true }); } catch { /* nettoyage au mieux : processus déjà arrêté ou dossier déjà supprimé */ } };
 process.on("exit", net); process.on("SIGTERM", () => { net(); process.exit(0); });
 
 const dodo = (m) => new Promise((r) => setTimeout(r, m));
@@ -41,7 +41,7 @@ for (let i = 0; i < 60 && !ws; i++) {
   try {
     const p = (await (await fetch(`http://127.0.0.1:${PORT}/json`)).json()).find((x) => x.type === "page");
     if (p) ws = new WebSocket(p.webSocketDebuggerUrl);
-  } catch {}
+  } catch { /* Chrome démarre encore : on réessaie au tour suivant */ }
 }
 if (!ws) { console.log("Chrome muet"); process.exit(1); }
 await new Promise((r) => (ws.onopen = r));

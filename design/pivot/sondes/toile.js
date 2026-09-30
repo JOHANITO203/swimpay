@@ -4,6 +4,7 @@
 
    Les nœuds sont posés dans le DOM par ce script à partir de TOILE_NOEUDS,
    que site.py injecte juste au-dessus. */
+/* global TOILE_NOEUDS */
 (() => {
   "use strict";
   const svg = document.getElementById("t-svg");

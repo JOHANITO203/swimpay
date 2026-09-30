@@ -33,8 +33,6 @@ const NOEUDS = [
   { n: "Fournisseurs", f: "Décaissement", h: "0 0% 62%",     sens: "s", op: "paiement fournisseur" },
 ];
 
-const ech = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
 const html = `<title>La toile SwimPay</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 

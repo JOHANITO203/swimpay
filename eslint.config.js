@@ -1,5 +1,6 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import globals from 'globals';
 
 export default tseslint.config(
   js.configs.recommended,
@@ -25,6 +26,32 @@ export default tseslint.config(
         console: 'readonly',
         process: 'readonly'
       }
+    }
+  },
+  {
+    // Outils de developpement lances avec Node 22 : sondes de design et skills.
+    // WebSocket est global depuis Node 22, mais absent de globals.node v14.
+    files: ['design/**/*.mjs', '.claude/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        WebSocket: 'readonly'
+      }
+    }
+  },
+  {
+    // Scripts executes dans une page web (injectes par design/pivot/sondes/site.py).
+    files: ['design/**/*.js'],
+    languageOptions: {
+      globals: globals.browser
+    }
+  },
+  {
+    // Le Worker Cloudflare du site : environnement de type service worker
+    // (fetch, Request, Response, Headers).
+    files: ['deploy/**/*.js'],
+    languageOptions: {
+      globals: globals.serviceworker
     }
   }
 );

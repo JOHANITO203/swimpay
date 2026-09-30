@@ -45,7 +45,7 @@ const chrome = spawn(CHROME, [
 ], { stdio: "ignore" });
 // le profil jetable se nettoie TOUJOURS : 716 profils orphelins ont saturé le
 // disque une fois, c'est ce qui a provoqué la purge qui a tout emporté
-const menage = () => { try { chrome.kill(); } catch {} try { rmSync(profil, { recursive: true, force: true }); } catch {} };
+const menage = () => { try { chrome.kill(); } catch { /* nettoyage au mieux : processus déjà arrêté ou dossier déjà supprimé */ } try { rmSync(profil, { recursive: true, force: true }); } catch { /* nettoyage au mieux : processus déjà arrêté ou dossier déjà supprimé */ } };
 process.on("exit", menage);
 process.on("SIGINT", () => { menage(); process.exit(130); });
 
@@ -56,7 +56,7 @@ for (let i = 0; i < 60 && !ws; i++) {
   try {
     const p = (await (await fetch(`http://127.0.0.1:${PORT}/json`)).json()).find((x) => x.type === "page");
     if (p) ws = new WebSocket(p.webSocketDebuggerUrl);
-  } catch {}
+  } catch { /* Chrome démarre encore : on réessaie au tour suivant */ }
 }
 if (!ws) { console.error("Chrome injoignable — définir la variable CHROME si besoin"); process.exit(2); }
 await new Promise((r) => (ws.onopen = r));
