@@ -113,6 +113,25 @@ for (const cible of CIBLES) {
   // raccourci() et la signature par code debitaient encore 30 %)
   const solde = await ev(`(() => { E = neuf(); E.cfg = { rythme: "mois", c: 30000, T: 11, B: 1, mode: "invitation" }; raccourci(); return E.solde; })()`);
   test("solde apres signature = 148 350 - 82 500 - 30 000 = 35 850 F", solde === 35850, String(solde));
+
+  // le parcours « Tontine du bureau » (invitation : 8 semaines, 10 000 F, cagnotte 80 000 F)
+  const bureau = await ev(`(() => {
+    E = neuf(); dernierEcran = null; notifier("invitation"); ouvrirOffre("invitation");
+    const chiffres = document.body.innerText;
+    raccourci();
+    const q = E.M.p[maPlace()];
+    return { chiffres, cautionMoteur: E.M.caution0, cautionEcran: document.body.innerText, solde: E.solde };
+  })()`);
+  test("Tontine du bureau, Mes chiffres : caution 20 000 F", num(ligne(bureau.chiffres, "dont caution").split("mises")[1]) === 20000, ligne(bureau.chiffres, "dont caution"));
+  test("Tontine du bureau, preleve au contrat 30 000 F", num(ligne(bureau.chiffres, "Prélevé en acceptant").split("contrat")[1]) === 30000, ligne(bureau.chiffres, "Prélevé en acceptant"));
+  test("Tontine du bureau, caution du moteur 20 000 F", bureau.cautionMoteur === 20000, String(bureau.cautionMoteur));
+  test("Tontine du bureau, solde apres signature 118 350 F", bureau.solde === 118350, String(bureau.solde));
+  if (dossierCap) {
+    await ev(`(() => { E = neuf(); dernierEcran = null; notifier("invitation"); ouvrirOffre("invitation"); })()`);
+    await dodo(500);
+    const s = await cmd("Page.captureScreenshot", { format: "png" });
+    writeFileSync(join(dossierCap, (cible.includes("deploy") ? "site" : "design") + "-bureau.png"), Buffer.from(s.result.data, "base64"));
+  }
 }
 console.log(echecs ? `\n${echecs} echec(s)` : "\nTout passe.");
 process.exit(echecs ? 1 : 0);
