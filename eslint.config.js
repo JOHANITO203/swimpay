@@ -37,6 +37,12 @@ export default tseslint.config(
         ...globals.node,
         WebSocket: 'readonly'
       }
+    },
+    rules: {
+      // Chaque sonde reprend le meme gabarit : nettoyage au mieux de Chrome et
+      // de son profil, attente de son demarrage. Un catch vide y est voulu ;
+      // les autres blocs vides restent interdits.
+      'no-empty': ['error', { allowEmptyCatch: true }]
     }
   },
   {
@@ -51,7 +57,8 @@ export default tseslint.config(
       }
     },
     rules: {
-      '@typescript-eslint/no-require-imports': 'off'
+      '@typescript-eslint/no-require-imports': 'off',
+      'no-empty': ['error', { allowEmptyCatch: true }]
     }
   },
   {
